@@ -1,4 +1,3 @@
-namespace faust_generated {
 /* ------------------------------------------------------------
 name: "tremolo"
 Code generated with Faust 2.85.5 (https://faust.grame.fr)
@@ -9,8 +8,6 @@ Compilation options: -a faust/architectures/standalone-header.cpp -lang cpp -i -
 #define  __TremoloFaust_H__
 
 #include <cstddef>
-
-namespace faust_generated {
 
 struct Soundfile;
 
@@ -40,8 +37,6 @@ class FaustDspBase {
 public:
     virtual ~FaustDspBase() = default;
 };
-
-}  // namespace faust_generated
 
 #ifndef FAUSTFLOAT
 #define FAUSTFLOAT float
@@ -212,4 +207,3 @@ class TremoloFaust final : public FaustDspBase {
 };
 
 #endif
-} // namespace faust_generated

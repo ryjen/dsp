@@ -10,6 +10,6 @@ mkdir -p "$(dirname -- "$output")"
 exec faust -i \
   -a faust/architectures/standalone-header.cpp \
   -lang cpp -light -nvi -inpl \
-  -ns faust_generated -scn FaustDspBase -cn TremoloFaust \
+  -scn FaustDspBase -cn TremoloFaust \
   -o "$output" \
   effects/tremolo/faust/tremolo.dsp

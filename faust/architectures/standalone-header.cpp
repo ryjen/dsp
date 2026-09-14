@@ -1,7 +1,5 @@
 #include <cstddef>
 
-namespace faust_generated {
-
 struct Soundfile;
 
 struct Meta {
@@ -30,8 +28,6 @@ class FaustDspBase {
 public:
     virtual ~FaustDspBase() = default;
 };
-
-}  // namespace faust_generated
 
 <<includeIntrinsic>>
 <<includeclass>>
