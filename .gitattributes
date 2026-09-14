@@ -1,0 +1,2 @@
+# Generated Faust output is compared byte-for-byte with the pinned compiler.
+effects/tremolo/generated/* -whitespace

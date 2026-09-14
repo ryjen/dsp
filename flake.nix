@@ -25,7 +25,10 @@
             pname = "dsp-native-check";
             version = "0.1.0";
             src = self;
-            nativeBuildInputs = [ pkgs.cmake pkgs.ninja ];
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+            ];
 
             configurePhase = ''
               runHook preConfigure
@@ -53,6 +56,24 @@
               runHook postInstall
             '';
           };
+
+          faust-generated =
+            pkgs.runCommand "dsp-faust-generated-check"
+              {
+                nativeBuildInputs = [
+                  pkgs.faust
+                  pkgs.diffutils
+                  pkgs.which
+                ];
+              }
+              ''
+                cp -R ${self} source
+                chmod -R +w source
+                cd source
+                sh ./tools/generate-faust.sh "$TMPDIR/tremolo_faust.hpp"
+                diff -u effects/tremolo/generated/tremolo_faust.hpp "$TMPDIR/tremolo_faust.hpp"
+                touch "$out"
+              '';
         }
       );
 
@@ -70,6 +91,7 @@
               pkgs.coreutils
               pkgs.git
               pkgs.ninja
+              pkgs.faust
             ];
           };
         }
