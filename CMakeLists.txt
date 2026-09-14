@@ -49,3 +49,7 @@ target_link_libraries(dsp_tremolo PUBLIC dsp_core)
 add_executable(dsp_tremolo_test test/effects/tremolo_test.cpp)
 target_link_libraries(dsp_tremolo_test PRIVATE dsp_native dsp_tremolo)
 add_test(NAME dsp_tremolo_test COMMAND dsp_tremolo_test)
+
+add_executable(dsp_tremolo_realtime_test test/effects/tremolo_realtime_test.cpp)
+target_link_libraries(dsp_tremolo_realtime_test PRIVATE dsp_native dsp_tremolo)
+add_test(NAME dsp_tremolo_realtime_test COMMAND dsp_tremolo_realtime_test)
