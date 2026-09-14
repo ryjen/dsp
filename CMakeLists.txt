@@ -13,3 +13,7 @@ enable_testing()
 add_executable(dsp_native_smoke test/native/native_smoke.cpp)
 target_link_libraries(dsp_native_smoke PRIVATE dsp_core)
 add_test(NAME dsp_native_smoke COMMAND dsp_native_smoke)
+
+add_executable(dsp_processor_contract_test test/core/processor_contract_test.cpp)
+target_link_libraries(dsp_processor_contract_test PRIVATE dsp_core)
+add_test(NAME dsp_processor_contract_test COMMAND dsp_processor_contract_test)
