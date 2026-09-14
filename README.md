@@ -28,6 +28,18 @@ The core contract is defined by `ProcessSpec`, non-owning planar `AudioBlock`, a
 
 See `docs/adr/0001-realtime-processor-contract.md` for the rationale and extension rules.
 
+## Faust effect kernels
+
+Faust is adopted selectively as a build-time source generator for suitable DSP kernels. Public processor/control/host contracts remain native C++, and ordinary native builds consume committed generated C++ without requiring Faust.
+
+The first portable effect is `TremoloProcessor`, generated from `effects/tremolo/faust/tremolo.dsp` and wrapped behind the same `Processor` contract as every other effect. Regenerate its committed kernel with:
+
+```sh
+nix develop --command tools/generate-faust.sh
+```
+
+`nix flake check` independently regenerates and compares the artifact through `checks.faust-generated`. Generated files under `effects/*/generated/` are never edited by hand. See `docs/adr/0002-selective-faust-adoption.md`.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
@@ -49,4 +61,4 @@ Or run the pinned repository gate:
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-Issue #4 is the next DSP slice: evaluate Faust and implement tremolo against this contract.
+Issue #5 is the next DSP slice: implement bounded realtime delay with tempo-synchronized control.
