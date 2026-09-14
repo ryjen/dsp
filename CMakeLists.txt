@@ -28,6 +28,7 @@ add_test(NAME dsp_realtime_allocation_test COMMAND dsp_realtime_allocation_test)
 
 add_library(dsp_native STATIC
     hosts/native/src/offline_renderer.cpp
+    hosts/native/src/callback_budget.cpp
 )
 target_include_directories(dsp_native PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hosts/native/include)
 target_link_libraries(dsp_native PUBLIC dsp_core)
@@ -35,3 +36,7 @@ target_link_libraries(dsp_native PUBLIC dsp_core)
 add_executable(dsp_offline_renderer_test test/native/offline_renderer_test.cpp)
 target_link_libraries(dsp_offline_renderer_test PRIVATE dsp_native)
 add_test(NAME dsp_offline_renderer_test COMMAND dsp_offline_renderer_test)
+
+add_executable(dsp_callback_budget_test test/native/callback_budget_test.cpp)
+target_link_libraries(dsp_callback_budget_test PRIVATE dsp_native)
+add_test(NAME dsp_callback_budget_test COMMAND dsp_callback_budget_test)
