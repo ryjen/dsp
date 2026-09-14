@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.25)
 
 project(dsp LANGUAGES CXX)
 
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_library(dsp_core INTERFACE)
 target_include_directories(dsp_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/core/include)
 target_compile_features(dsp_core INTERFACE cxx_std_20)
-set_target_properties(dsp_core PROPERTIES CXX_EXTENSIONS OFF)
 
 enable_testing()
 
