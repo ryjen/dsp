@@ -66,10 +66,17 @@ int main() {
 
     allocation_count.store(0, std::memory_order_relaxed);
     tracking.store(true, std::memory_order_release);
+    void* probe = ::operator new(16);
+    ::operator delete(probe);
+    tracking.store(false, std::memory_order_release);
+    if (allocation_count.load(std::memory_order_relaxed) != 1) return 2;
+
+    allocation_count.store(0, std::memory_order_relaxed);
+    tracking.store(true, std::memory_order_release);
     processor.process(dsp::AudioBlock{channels, 2, 64});
     tracking.store(false, std::memory_order_release);
 
-    if (allocation_count.load(std::memory_order_relaxed) != 0) return 2;
-    if (left.back() != 0.5F || right.back() != 0.5F) return 3;
+    if (allocation_count.load(std::memory_order_relaxed) != 0) return 3;
+    if (left.back() != 0.5F || right.back() != 0.5F) return 4;
     return 0;
 }

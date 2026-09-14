@@ -1,6 +1,7 @@
 #include <dsp/core.hpp>
 
 #include <array>
+#include <limits>
 
 int main() {
     dsp::ProcessSpec valid{48000.0, 64, 2};
@@ -8,6 +9,8 @@ int main() {
     if (dsp::ProcessSpec{0.0, 64, 2}.valid()) return 2;
     if (dsp::ProcessSpec{48000.0, 0, 2}.valid()) return 3;
     if (dsp::ProcessSpec{48000.0, 64, 0}.valid()) return 4;
+    if (dsp::ProcessSpec{std::numeric_limits<double>::infinity(), 64, 2}.valid()) return 7;
+    if (dsp::ProcessSpec{std::numeric_limits<double>::quiet_NaN(), 64, 2}.valid()) return 8;
 
     std::array<float, 4> left{};
     std::array<float, 4> right{};
