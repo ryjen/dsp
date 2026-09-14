@@ -40,3 +40,12 @@ add_test(NAME dsp_offline_renderer_test COMMAND dsp_offline_renderer_test)
 add_executable(dsp_callback_budget_test test/native/callback_budget_test.cpp)
 target_link_libraries(dsp_callback_budget_test PRIVATE dsp_native)
 add_test(NAME dsp_callback_budget_test COMMAND dsp_callback_budget_test)
+
+add_library(dsp_tremolo STATIC effects/tremolo/src/tremolo.cpp)
+target_include_directories(dsp_tremolo PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/effects/tremolo/include)
+target_include_directories(dsp_tremolo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/effects/tremolo/generated)
+target_link_libraries(dsp_tremolo PUBLIC dsp_core)
+
+add_executable(dsp_tremolo_test test/effects/tremolo_test.cpp)
+target_link_libraries(dsp_tremolo_test PRIVATE dsp_native dsp_tremolo)
+add_test(NAME dsp_tremolo_test COMMAND dsp_tremolo_test)
