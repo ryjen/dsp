@@ -1,6 +1,6 @@
 #include <dsp/effects/tremolo.hpp>
 
-#include "tremolo_faust.hpp"
+#include <tremolo_faust.hpp>
 
 #include <algorithm>
 #include <cstddef>
