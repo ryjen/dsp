@@ -17,3 +17,11 @@ add_test(NAME dsp_native_smoke COMMAND dsp_native_smoke)
 add_executable(dsp_processor_contract_test test/core/processor_contract_test.cpp)
 target_link_libraries(dsp_processor_contract_test PRIVATE dsp_core)
 add_test(NAME dsp_processor_contract_test COMMAND dsp_processor_contract_test)
+
+add_executable(dsp_control_primitives_test test/core/control_primitives_test.cpp)
+target_link_libraries(dsp_control_primitives_test PRIVATE dsp_core)
+add_test(NAME dsp_control_primitives_test COMMAND dsp_control_primitives_test)
+
+add_executable(dsp_realtime_allocation_test test/core/realtime_allocation_test.cpp)
+target_link_libraries(dsp_realtime_allocation_test PRIVATE dsp_core)
+add_test(NAME dsp_realtime_allocation_test COMMAND dsp_realtime_allocation_test)
