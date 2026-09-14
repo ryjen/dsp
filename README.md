@@ -8,23 +8,45 @@ Realtime guitar DSP, pedal firmware, realtime MIDI/control, and bounded performa
 
 The repositories integrate only through explicit, versioned contracts; neither should depend on the other's source tree.
 
-## Architecture direction
+## Architecture
 
-- `core/` — host-independent realtime contracts (introduced in issue #3)
+- `core/` — host-independent realtime contracts and fixed-state control primitives
 - `effects/` — portable effects built on core contracts
-- `hosts/` — native/offline and optional desktop host adapters
+- `hosts/native/` — deterministic offline rendering, fixtures, comparison, and timing evidence
+- `hosts/` — future optional desktop host adapters
 - `targets/` — embedded hardware adapters such as Daisy
 - `protocols/` — bounded external configuration/evidence contracts
 - `legacy/go-kata/` — preserved historical Go DSP exercises
 
-Core DSP must not depend on JUCE, Daisy SDK types, filesystem/network APIs, or MIDI packet formats.
+Core DSP does not depend on JUCE, Daisy SDK types, filesystem/network APIs, or MIDI packet formats.
 
-## Realtime baseline
+## Realtime contract
 
-Future audio callbacks must use bounded work with no dynamic allocation, filesystem/network I/O, or blocking locks. Sample-rate/block-size assumptions and control handoff must be explicit and deterministic.
+The core contract is defined by `ProcessSpec`, non-owning planar `AudioBlock`, and `Processor`. Preparation happens outside the audio callback; `reset()` and `process()` are bounded `noexcept` operations.
 
-## Bootstrap build
+`AtomicFloat` provides lock-free scalar target publication and `LinearSmoother` provides fixed-state sample ramps. Concrete effects own their parameter sets rather than using a dynamic registry.
 
-The current bootstrap intentionally defines no production DSP processor API. Issue #2 only establishes the build/test/tooling boundary; issue #3 owns the processor contract and offline harness.
+See `docs/adr/0001-realtime-processor-contract.md` for the rationale and extension rules.
 
-See `docs/superpowers/specs/2026-09-14-realtime-dsp-bootstrap-design.md` for the bootstrap design.
+## Native evidence harness
+
+`dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
+
+Listening tests are not a correctness gate; deterministic vectors and allocation guards are.
+
+## Build and test
+
+```sh
+nix develop
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Or run the pinned repository gate:
+
+```sh
+nix flake check --no-write-lock-file --print-build-logs
+```
+
+Issue #4 is the next DSP slice: evaluate Faust and implement tremolo against this contract.
