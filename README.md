@@ -40,6 +40,14 @@ nix develop --command tools/generate-faust.sh
 
 `nix flake check` independently regenerates and compares the artifact through `checks.faust-generated`. Generated files under `effects/*/generated/` are never edited by hand. See `docs/adr/0002-selective-faust-adoption.md`.
 
+## Native stateful effects
+
+`DelayProcessor` is the complementary native-C++ effect slice. It owns preallocated per-channel circular buffers, supports fractional reads, bounds feedback to 0.95, and smooths live delay-time, feedback, and wet/dry changes without callback allocation.
+
+Delay time can be supplied directly in milliseconds or resolved from normalized BPM plus quarter, dotted-eighth, eighth, eighth-triplet, or sixteenth subdivisions. MIDI clock/packet decoding remains an adapter concern; the delay consumes only normalized effect controls.
+
+See `docs/adr/0003-native-stateful-delay.md` for the state-ownership, interpolation, and transition decisions.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
@@ -61,4 +69,4 @@ Or run the pinned repository gate:
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-Issue #5 is the next DSP slice: implement bounded realtime delay with tempo-synchronized control.
+Issue #6 is the next critical-path slice: prototype the Daisy pedal target and realtime MIDI/control adapter.
