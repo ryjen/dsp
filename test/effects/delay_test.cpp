@@ -93,5 +93,128 @@ int main() {
     null_channel.process({channels, 2, 2});
     if (valid[0] != 0.0F || valid[1] != 1.0F) return 24;
 
+    DelayProcessor fractional;
+    fractional.set_delay_ms(1.5F);
+    fractional.set_feedback(0.0F);
+    fractional.set_mix(1.0F);
+    std::vector<float> fractional_impulse(8, 0.0F);
+    fractional_impulse[0] = 1.0F;
+    result = dsp::native::render_offline(
+        fractional, {1000.0, 8, 1}, {fractional_impulse}, 8);
+    if (!result) return 25;
+    if (std::abs(result.channels[0][1] - 0.5F) > 1.0e-6F) return 26;
+    if (std::abs(result.channels[0][2] - 0.5F) > 1.0e-6F) return 27;
+
+    DelayProcessor synced;
+    synced.set_tempo_bpm(120.0F);
+    synced.set_subdivision(dsp::effects::DelaySubdivision::quarter);
+    synced.set_feedback(0.0F);
+    synced.set_mix(1.0F);
+    std::vector<float> sync_impulse(600, 0.0F);
+    sync_impulse[0] = 1.0F;
+    result = dsp::native::render_offline(
+        synced, {1000.0, 64, 1}, {sync_impulse}, 64);
+    if (!result) return 28;
+    if (std::abs(result.channels[0][500] - 1.0F) > 1.0e-6F) return 29;
+
+    DelayProcessor time_transition;
+    time_transition.set_delay_ms(10.0F);
+    time_transition.set_feedback(0.0F);
+    time_transition.set_mix(1.0F);
+    if (!time_transition.prepare({1000.0, 600, 1})) return 30;
+    time_transition.reset();
+    std::vector<float> time_lead(600);
+    for (std::size_t i = 0; i < time_lead.size(); ++i) {
+        time_lead[i] = static_cast<float>(i) * 0.01F;
+    }
+    float* time_lead_channels[]{time_lead.data()};
+    time_transition.process({time_lead_channels, 1, time_lead.size()});
+    float previous = time_lead.back();
+    time_transition.set_delay_ms(500.0F);
+    std::vector<float> time_changed(128);
+    for (std::size_t i = 0; i < time_changed.size(); ++i) {
+        time_changed[i] = static_cast<float>(600 + i) * 0.01F;
+    }
+    float* time_changed_channels[]{time_changed.data()};
+    time_transition.process({time_changed_channels, 1, time_changed.size()});
+    for (float value : time_changed) {
+        if (std::abs(value - previous) > 0.25F) return 31;
+        previous = value;
+    }
+
+    DelayProcessor tempo_transition;
+    tempo_transition.set_tempo_bpm(120.0F);
+    tempo_transition.set_subdivision(dsp::effects::DelaySubdivision::quarter);
+    tempo_transition.set_feedback(0.0F);
+    tempo_transition.set_mix(1.0F);
+    if (!tempo_transition.prepare({1000.0, 1200, 1})) return 32;
+    tempo_transition.reset();
+    std::vector<float> tempo_lead(1200);
+    for (std::size_t i = 0; i < tempo_lead.size(); ++i) {
+        tempo_lead[i] = static_cast<float>(i) * 0.01F;
+    }
+    float* tempo_lead_channels[]{tempo_lead.data()};
+    tempo_transition.process({tempo_lead_channels, 1, tempo_lead.size()});
+    previous = tempo_lead.back();
+    tempo_transition.set_tempo_bpm(60.0F);
+    std::vector<float> tempo_changed(128);
+    for (std::size_t i = 0; i < tempo_changed.size(); ++i) {
+        tempo_changed[i] = static_cast<float>(1200 + i) * 0.01F;
+    }
+    float* tempo_changed_channels[]{tempo_changed.data()};
+    tempo_transition.process({tempo_changed_channels, 1, tempo_changed.size()});
+    for (float value : tempo_changed) {
+        if (std::abs(value - previous) > 0.25F) return 33;
+        previous = value;
+    }
+
+    DelayProcessor mix_transition;
+    mix_transition.set_delay_ms(100.0F);
+    mix_transition.set_feedback(0.0F);
+    mix_transition.set_mix(0.0F);
+    if (!mix_transition.prepare({1000.0, 600, 1})) return 34;
+    mix_transition.reset();
+    std::vector<float> mix_lead(600);
+    for (std::size_t i = 0; i < mix_lead.size(); ++i) {
+        mix_lead[i] = static_cast<float>(i) * 0.01F;
+    }
+    float* mix_lead_channels[]{mix_lead.data()};
+    mix_transition.process({mix_lead_channels, 1, mix_lead.size()});
+    previous = mix_lead.back();
+    mix_transition.set_mix(1.0F);
+    std::vector<float> mix_changed(64);
+    for (std::size_t i = 0; i < mix_changed.size(); ++i) {
+        mix_changed[i] = static_cast<float>(600 + i) * 0.01F;
+    }
+    float* mix_changed_channels[]{mix_changed.data()};
+    mix_transition.process({mix_changed_channels, 1, mix_changed.size()});
+    for (float value : mix_changed) {
+        if (std::abs(value - previous) > 0.25F) return 35;
+        previous = value;
+    }
+
+    DelayProcessor stable;
+    stable.set_delay_ms(10.0F);
+    stable.set_feedback(0.95F);
+    stable.set_mix(1.0F);
+    const std::vector<float> dc_input(4000, 1.0F);
+    result = dsp::native::render_offline(
+        stable, {1000.0, 64, 1}, {dc_input}, 64);
+    if (!result) return 36;
+    for (float value : result.channels[0]) {
+        if (!std::isfinite(value)) return 37;
+        if (std::abs(value) > 20.001F) return 38;
+    }
+
+    DelayProcessor silent;
+    silent.set_delay_ms(10.0F);
+    silent.set_feedback(0.95F);
+    silent.set_mix(1.0F);
+    const std::vector<float> silence(1024, 0.0F);
+    result = dsp::native::render_offline(
+        silent, {1000.0, 64, 1}, {silence}, 64);
+    if (!result) return 39;
+    for (float value : result.channels[0]) if (value != 0.0F) return 40;
+
     return 0;
 }
