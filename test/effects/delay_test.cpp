@@ -229,7 +229,7 @@ int main() {
     const std::vector<float> silence(1024, 0.0F);
     result = dsp::native::render_offline(
         silent, {1000.0, 64, 1}, {silence}, 64);
-    if (!result) return 39;
+    if (!result) return 42;
     for (float value : result.channels[0]) if (value != 0.0F) return 43;
 
     return 0;
