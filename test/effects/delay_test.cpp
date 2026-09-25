@@ -193,6 +193,22 @@ int main() {
         previous = value;
     }
 
+    DelayProcessor feedback_transition;
+    feedback_transition.set_delay_ms(1.0F);
+    feedback_transition.set_feedback(0.0F);
+    feedback_transition.set_mix(1.0F);
+    if (!feedback_transition.prepare({1000.0, 4, 1})) return 36;
+    feedback_transition.reset();
+    float feedback_seed[]{1.0F};
+    float* feedback_seed_channels[]{feedback_seed};
+    feedback_transition.process({feedback_seed_channels, 1, 1});
+    feedback_transition.set_feedback(0.95F);
+    float feedback_changed[]{0.0F, 0.0F};
+    float* feedback_changed_channels[]{feedback_changed};
+    feedback_transition.process({feedback_changed_channels, 1, 2});
+    if (std::abs(feedback_changed[0] - 1.0F) > 1.0e-6F) return 37;
+    if (!(feedback_changed[1] > 0.0F && feedback_changed[1] < 0.2F)) return 38;
+
     DelayProcessor stable;
     stable.set_delay_ms(10.0F);
     stable.set_feedback(0.95F);
@@ -200,10 +216,10 @@ int main() {
     const std::vector<float> dc_input(4000, 1.0F);
     result = dsp::native::render_offline(
         stable, {1000.0, 64, 1}, {dc_input}, 64);
-    if (!result) return 36;
+    if (!result) return 39;
     for (float value : result.channels[0]) {
-        if (!std::isfinite(value)) return 37;
-        if (std::abs(value) > 20.001F) return 38;
+        if (!std::isfinite(value)) return 40;
+        if (std::abs(value) > 20.001F) return 41;
     }
 
     DelayProcessor silent;
@@ -214,7 +230,7 @@ int main() {
     result = dsp::native::render_offline(
         silent, {1000.0, 64, 1}, {silence}, 64);
     if (!result) return 39;
-    for (float value : result.channels[0]) if (value != 0.0F) return 40;
+    for (float value : result.channels[0]) if (value != 0.0F) return 43;
 
     return 0;
 }
