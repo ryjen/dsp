@@ -55,3 +55,8 @@ add_executable(dsp_tremolo_realtime_test test/effects/tremolo_realtime_test.cpp)
 target_link_libraries(dsp_tremolo_realtime_test PRIVATE dsp_native dsp_tremolo)
 add_test(NAME dsp_tremolo_realtime_test COMMAND dsp_tremolo_realtime_test)
 target_compile_options(dsp_tremolo_realtime_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+add_executable(dsp_delay_time_test test/effects/delay_time_test.cpp)
+target_include_directories(dsp_delay_time_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/effects/delay/include)
+target_link_libraries(dsp_delay_time_test PRIVATE dsp_core)
+add_test(NAME dsp_delay_time_test COMMAND dsp_delay_time_test)
