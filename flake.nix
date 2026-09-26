@@ -57,6 +57,44 @@
             '';
           };
 
+          strict = pkgs.stdenv.mkDerivation {
+            pname = "dsp-strict-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror"
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/strict-check-passed"
+              runHook postInstall
+            '';
+          };
+
           faust-generated =
             pkgs.runCommand "dsp-faust-generated-check"
               {
@@ -74,6 +112,46 @@
                 diff -u effects/tremolo/generated/tremolo_faust.hpp "$TMPDIR/tremolo_faust.hpp"
                 touch "$out"
               '';
+        }
+        // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          sanitizers = pkgs.clangStdenv.mkDerivation {
+            pname = "dsp-sanitizer-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/sanitizer-check-passed"
+              runHook postInstall
+            '';
+          };
         }
       );
 
