@@ -50,6 +50,7 @@
 - Produces `enum class PedalMode : std::uint8_t { free, quarter, dotted_eighth };`
 - Produces `struct PedalControlSnapshot { float primary_normalized; float secondary_normalized; float tempo_bpm; PedalMode mode; bool bypassed; bool transport_running; };`
 - Produces `class PedalControlState` with `publish(const PedalControlSnapshot&) noexcept` and `snapshot() const noexcept -> PedalControlSnapshot`.
+- `snapshot()` is a bounded field-wise latest-value snapshot: every field is loaded once per call, but no transactional cross-field generation guarantee is required.
 - Later tasks use this as the only portable state handoff into the audio/runtime layer.
 
 - [ ] **Step 1: Write the failing state test**
@@ -110,7 +111,10 @@ git commit -m "feat: add fixed realtime pedal control state"
 - `TempoController::update_timeout(MonotonicMicros) noexcept`
 - `TempoController::tempo_bpm() const noexcept -> float`
 - `TempoController::midi_authoritative() const noexcept -> bool`
-- `MidiAdapter::translate(const MidiMessage&, MonotonicMicros) noexcept -> std::optional<ControlEvent>`, where `MidiMessage` is a project-owned bounded decoded-message value type, not a libDaisy type.
+- Produces `enum class MidiMessageKind : std::uint8_t { clock, start, stop, continue_playback, control_change, unsupported };`.
+- Produces `struct MidiMessage { MidiMessageKind kind; std::uint8_t channel; std::uint8_t data1; std::uint8_t data2; bool valid; };`.
+- Produces bounded `ControlEvent` variants for tempo/transport and normalized primary/secondary updates.
+- `MidiAdapter::translate(const MidiMessage&, MonotonicMicros) noexcept -> std::optional<ControlEvent>`.
 - Task 5 converts libDaisy `MidiEvent` to `MidiMessage`; this task remains host-testable.
 
 - [ ] **Step 1: Write failing tempo tests**
@@ -239,7 +243,7 @@ git commit -m "feat: map Hothouse controls to portable delay state"
 - [ ] **Step 1: Write failing runtime tests**
 
 Cover:
-- invalid `ProcessSpec` or null processor preparation fails;
+- invalid `ProcessSpec` preparation fails;
 - 48 kHz / 48-frame stereo preparation succeeds;
 - input is copied to output before in-place processor call;
 - bypass=false yields processed signal;
@@ -373,7 +377,14 @@ ADR-0004 records:
 
 `HARDWARE-VALIDATION.md` contains an unchecked table/template for every hardware-only claim. It must explicitly state that blank/unchecked items are not satisfied by cross-compilation.
 
-- [ ] **Step 2: Run exact software gates**
+- [ ] **Step 2: Commit documentation**
+
+```sh
+git add README.md docs/adr/0004-daisy-hothouse-control-boundary.md targets/daisy/HARDWARE-VALIDATION.md
+git commit -m "docs: define Daisy Hothouse hardware validation gate"
+```
+
+- [ ] **Step 3: Run exact software gates**
 
 Run:
 ```sh
@@ -385,7 +396,7 @@ grep -RniE 'guitar-practice-system|JUCE' core effects targets/daisy --exclude='R
 
 Expected: all software checks pass; no forbidden cross-repo/JUCE dependency exists in implementation code.
 
-- [ ] **Step 3: Whole-branch review**
+- [ ] **Step 4: Whole-branch review**
 
 Review `origin/master...HEAD` against #6 and the spec. Critical/Important findings require RED→GREEN fixes and a fresh full `nix flake check`.
 
@@ -396,7 +407,7 @@ Specifically inspect:
 - whether control publication can tear or allocate;
 - whether bypass scratch is bounded by prepared spec.
 
-- [ ] **Step 4: Open PR with partial-acceptance wording**
+- [ ] **Step 5: Open PR with partial-acceptance wording**
 
 PR body must state:
 - software/native/cross-build gates completed;
@@ -406,15 +417,15 @@ PR body must state:
 
 Do not include `Closes #6` yet.
 
-- [ ] **Step 5: Hosted CI exact-head gate**
+- [ ] **Step 6: Hosted CI exact-head gate**
 
 Require hosted CI success on the exact PR head and no unresolved review threads before merge.
 
-- [ ] **Step 6: Merge software slice without closing #6**
+- [ ] **Step 7: Merge software slice without closing #6**
 
 Merge after exact-head CI/review is green. Update #6 with the merge SHA and remaining hardware checklist. Keep #6 open.
 
-- [ ] **Step 7: Hardware completion follow-up**
+- [ ] **Step 8: Hardware completion follow-up**
 
 When a real Hothouse/Daisy target is available:
 - flash exact firmware commit;
@@ -424,10 +435,3 @@ When a real Hothouse/Daisy target is available:
 - record `CpuLoadMeter` or equivalent callback/headroom evidence outside callback;
 - run long feedback decay and inspect callback load/non-finite output for denormal issues;
 - attach evidence to #6 and only then check hardware acceptance items / close #6.
-
-- [ ] **Step 8: Commit documentation**
-
-```sh
-git add README.md docs/adr/0004-daisy-hothouse-control-boundary.md targets/daisy/HARDWARE-VALIDATION.md
-git commit -m "docs: define Daisy Hothouse hardware validation gate"
-```
