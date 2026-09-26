@@ -93,7 +93,7 @@ Concrete effect bindings may know the effect type. The #6 reference binding maps
 
 ### 2. MIDI boundary
 
-Raw MIDI transport and packet parsing live under the Daisy target adapter.
+Raw MIDI transport and packet parsing live under the Daisy target adapter. USB receive/parsing callbacks do not mutate processor/control state directly; parsed events are drained and validated by the single-writer control/main loop before publication.
 
 libDaisy currently provides `MidiHandler` with UART and USB transports; the transport/parser produces MIDI events before project code translates them into normalized controls.
 
@@ -154,7 +154,9 @@ The remaining five pots/toggles/LED behavior is outside the required proof unles
 
 When Toggle 1 selects a synchronized subdivision, Pot 1 continues publishing the remembered free-time value but that value is not the effective delay time until free mode is selected again. This preserves the existing `DelayProcessor` semantics rather than inventing target-specific delay behavior.
 
-Physical controls are sampled/debounced outside the sample-processing inner loop. Their normalized state is published through bounded lock-free/fixed-state handoff and snapshotted by the audio callback at block boundaries.
+Physical controls are sampled/debounced outside the sample-processing inner loop. Footswitch/toggle edges use a 20 ms debounce window. Pot changes publish only when normalized movement is at least 0.002, preventing ADC jitter from continuously restarting the delay processor's smoothing ramps. Their normalized state is then published through the fixed lock-free handoff and snapshotted by the audio callback at block boundaries.
+
+The exact primary mapping is `delay_ms = exp(log(2000.0F) * normalized)`, producing 1 ms at 0 and 2000 ms at 1. Feedback is `0.95F * normalized`. MIDI CC values map from `0..127` to normalized `0..1` before the same binding functions are called.
 
 ### 5. Daisy audio adapter
 
@@ -197,11 +199,14 @@ Conceptually:
 
 ```cpp
 copy_input_to_prepared_dry_scratch();
+copy_input_to_output_block();
 processor.process(output_block);
 crossfade(prepared_dry_scratch, output_block, bypass_mix);
 ```
 
 Because the existing `Processor` contract is in-place, the runtime allocates dry scratch during `prepare()` for exactly `channel_count * max_block_size` samples. The callback never resizes it. Bypass transitions use a 5 ms sample ramp between processed and dry states; repeated publication of the same bypass state does not restart the ramp.
+
+The processor continues running and receiving input while bypassed. Bypass therefore affects only the output mix: delay state/tails remain continuous and re-engaging the effect does not reset or cold-start processor state.
 
 Hardware relay bypass is outside this slice.
 
@@ -267,7 +272,9 @@ Exact filenames may change if existing project conventions suggest a clearer spl
 
 Follow the repository/Micrantha CI rule: dependencies belong to the repository flake, not a feature-heavy runner image.
 
-The implementation should pin the ARM cross-toolchain and libDaisy/Hothouse build dependencies in `flake.nix` or repository-local build inputs. Hosted CI must be able to compile the firmware target without requiring a globally provisioned Daisy SDK.
+The implementation should pin the ARM cross-toolchain and libDaisy in `flake.nix` or repository-local build inputs. Hosted CI must be able to compile the firmware target without requiring a globally provisioned Daisy SDK.
+
+`libDaisy` is MIT-licensed and is an acceptable firmware dependency. The official `clevelandmusicco/HothouseExamples` repository is GPL-3.0; it may be consulted as documentation/reference, but #6 must not copy from it, link it, vendor it, or make it a build dependency unless a separate licensing decision explicitly changes the repository's distribution obligations. The Hothouse adapter should therefore be implemented directly against libDaisy plus published hardware/pin information.
 
 Do not introduce a source dependency from `guitar-practice-system`. Do not add JUCE to this slice.
 
