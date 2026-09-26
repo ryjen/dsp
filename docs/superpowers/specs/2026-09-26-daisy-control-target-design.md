@@ -150,7 +150,7 @@ The reference Hothouse/Delay mapping is explicit:
 
 The same normalized mappings are used by MIDI CC 20 and CC 21, so physical and MIDI control paths share one binding implementation.
 
-The remaining five pots/toggles/LED behavior is outside the required proof unless needed for a bounded diagnostic indication.
+The remaining four pots, two toggles, and two LEDs are outside the required proof unless needed for a bounded diagnostic indication.
 
 When Toggle 1 selects a synchronized subdivision, Pot 1 continues publishing the remembered free-time value but that value is not the effective delay time until free mode is selected again. This preserves the existing `DelayProcessor` semantics rather than inventing target-specific delay behavior.
 
