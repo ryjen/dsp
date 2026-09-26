@@ -72,41 +72,24 @@ Daisy/Hothouse adapters
 
 Add a small fixed-state control model using value types only. It carries normalized intent, not hardware protocol details.
 
-Representative concepts:
+Use one fixed control snapshot rather than parameter IDs or a generic registry:
 
 ```cpp
-struct TempoState {
-    float bpm;
-    bool running;
-};
-
-struct ParameterChange {
-    std::uint16_t id;
-    float normalized;
-};
-
-enum class TransportAction : std::uint8_t {
-    start,
-    stop,
-    continue_playback,
-};
-
-enum class FootswitchAction : std::uint8_t {
-    bypass_toggle,
-    tap,
+struct PedalControlSnapshot {
+    float primary_normalized;    // 0..1
+    float secondary_normalized;  // 0..1
+    float tempo_bpm;             // 20..300
+    std::uint8_t mode;           // bounded 3-position selector
+    bool bypassed;
+    bool transport_running;
 };
 ```
 
-The exact type layout may vary during implementation, but the following constraints are architectural:
+The control/main loop is the single writer. It validates and normalizes ADC, footswitch, tap-tempo, and MIDI input, then publishes each scalar field through fixed lock-free storage using the repository's existing `AtomicFloat` / lock-free integer atomics. The audio callback snapshots every published field once at the start of a block and uses that immutable block-local copy for the entire callback.
 
-- no heap ownership;
-- no dynamic parameter registry;
-- bounded, trivially movable/copyable event/state objects;
-- normalized scalar values are clamped before publication;
-- invalid or unsupported controls are ignored or rejected before reaching processors;
-- effect processors never parse raw MIDI or inspect Daisy types.
+There is no event queue in the audio path, no heap ownership, no dynamic parameter registry, and no numeric parameter-ID namespace. Continuous controls are latest-value-wins state. Momentary controls are converted by the single writer into final state before publication, for example a debounced footswitch toggles the published `bypassed` boolean.
 
-Concrete effect bindings may know the effect type. The #6 reference binding targets `DelayProcessor`; it maps normalized controls to existing delay setters. #6 does not introduce a generic reflection-based parameter system.
+Concrete effect bindings may know the effect type. The #6 reference binding maps the fixed snapshot to the existing `DelayProcessor` setters. Effect processors never parse raw MIDI or inspect Daisy types.
 
 ### 2. MIDI boundary
 
@@ -119,16 +102,19 @@ References:
 - https://docs.daisy.audio/libDaisy/classdaisy_1_1MidiUartTransport/
 - https://docs.daisy.audio/libDaisy/classdaisy_1_1MidiUsbTransport/
 
-The first target supports:
+The first physical proof uses **USB MIDI** through libDaisy's USB MIDI transport. UART MIDI is not required for #6.
+
+The target supports:
 
 - MIDI clock -> normalized tempo observations;
 - Start / Stop / Continue -> transport state;
-- Control Change -> bounded normalized parameter changes;
-- Program Change -> bounded program-selection intent only.
+- Control Change on MIDI channel 1 only:
+  - CC 20 -> primary control / free delay time;
+  - CC 21 -> secondary control / feedback.
 
-Program Change does not introduce persistent preset storage or the #7 external preset schema. The translator surfaces a bounded program index; the #6 reference firmware is permitted to ignore program indices that have no built-in mapping.
+Other channel-voice messages, channels, CC numbers, SysEx, and Program Change are ignored in #6. Persistent or externally selected presets remain #7.
 
-MIDI clock timing logic must be deterministic and separately testable. Clock timing state accepts monotonic timing observations and derives a bounded BPM estimate without allocating in the realtime path.
+MIDI clock timing logic must be deterministic and separately testable. MIDI Clock is interpreted at 24 pulses per quarter note. After at least two valid observations, BPM derives from elapsed monotonic time and is clamped to 20–300 BPM. A bounded moving estimate over the most recent 24 pulse intervals is permitted to reduce jitter; storage must be fixed-size and callback-allocation-free.
 
 Malformed, truncated, unsupported, or out-of-range input must fail closed at the adapter/translation boundary. Rapid valid control input must remain bounded, allocation-free, and exception-free.
 
@@ -146,7 +132,9 @@ Authority is deterministic:
 6. Once accepted, tap tempo remains the active BPM until a valid running MIDI clock retakes authority or a later valid tap replaces it.
 7. If neither source has produced a valid BPM, the target starts at 120 BPM.
 
-The freshness timeout must be defined in elapsed monotonic time and remain valid across the supported 20–300 BPM range. The implementation plan must derive and test the exact timeout rather than using callback counts.
+Clock freshness uses elapsed monotonic time, never callback counts. After a valid estimate exists, MIDI authority expires when no clock pulse arrives for `max(250 ms, 6 * expected_clock_interval)`. This remains tolerant at the 20 BPM lower bound while releasing authority promptly at faster tempos.
+
+Tap tempo accepts intervals corresponding to 20–300 BPM (200–3000 ms). Out-of-range taps are ignored. Two valid taps establish a tempo; later valid taps update it using a fixed-size average of at most the last four intervals.
 
 Tempo publication is bounded to the existing delay range of 20–300 BPM. Source changes publish normalized BPM state; they never directly mutate delay-line memory.
 
@@ -154,11 +142,13 @@ Tempo publication is bounded to the existing delay range of 20–300 BPM. Source
 
 The reference Hothouse/Delay mapping is explicit:
 
-- Pot 1 -> free delay time, mapped into `DelayProcessor::set_delay_ms`;
-- Pot 2 -> feedback, mapped into `DelayProcessor::set_feedback`;
+- Pot 1 -> free delay time using an exponential map from 1 ms to 2000 ms, preserving useful resolution at short musical delays;
+- Pot 2 -> feedback using a linear map from 0.0 to 0.95;
 - Toggle 1 -> free / quarter-note / dotted-eighth subdivision;
 - Footswitch 1 -> bypass toggle;
 - Footswitch 2 -> tap tempo.
+
+The same normalized mappings are used by MIDI CC 20 and CC 21, so physical and MIDI control paths share one binding implementation.
 
 The remaining five pots/toggles/LED behavior is outside the required proof unless needed for a bounded diagnostic indication.
 
@@ -195,7 +185,7 @@ libDaisy supports configurable block size and sample rate; the target records th
 Reference:
 - https://docs.daisy.audio/tutorials/_a3_Getting-Started-Audio/
 
-The prototype baseline is 48 kHz. Block size is target configuration, not a core-DSP constant. The hardware evidence record must capture the actual sample rate, block size, callback period, and measured CPU/callback headroom.
+The prototype firmware configures **48 kHz / 48 frames**, yielding a 1 ms nominal callback deadline. These are target settings, not core-DSP constants. The hardware evidence record must confirm the actual sample rate, block size, callback period, and measured CPU/callback headroom rather than assuming configuration succeeded.
 
 ### 6. Bypass semantics
 
@@ -206,11 +196,12 @@ The first implementation uses software dry-through with a short bounded gain cro
 Conceptually:
 
 ```cpp
-processed = processor(input);
-output = crossfade(dry_input, processed, bypass_mix);
+copy_input_to_prepared_dry_scratch();
+processor.process(output_block);
+crossfade(prepared_dry_scratch, output_block, bypass_mix);
 ```
 
-The callback must preserve access to the dry input while processing the output buffer. Crossfade state is fixed-size and prepared ahead of callback execution.
+Because the existing `Processor` contract is in-place, the runtime allocates dry scratch during `prepare()` for exactly `channel_count * max_block_size` samples. The callback never resizes it. Bypass transitions use a 5 ms sample ramp between processed and dry states; repeated publication of the same bypass state does not restart the ramp.
 
 Hardware relay bypass is outside this slice.
 
@@ -292,15 +283,17 @@ Hardware-independent behavior must be deterministic and testable in ordinary CI:
 - MIDI clock observations -> bounded BPM;
 - Start / Stop / Continue and clock-timeout authority transitions;
 - CC normalization and out-of-range rejection;
-- bounded Program Change handling;
-- physical-control normalization;
+- unsupported Program Change and non-channel-1 CC messages are ignored;
+- physical-control normalization and exact exponential/linear mappings;
 - exact Pot 1 / Pot 2 / Toggle 1 / footswitch mapping;
 - tap-tempo state and MIDI-priority arbitration;
 - bypass ramp/crossfade behavior;
 - rapid control-change stress without callback allocation;
 - malformed/unsupported control input fails closed;
 - compile-time/core-boundary checks proving no Daisy/libDaisy types enter `core/` or `effects/`;
-- firmware target cross-compiles from pinned repo dependencies.
+- firmware target cross-compiles from pinned repo dependencies;
+- cross-compiled firmware configures 48 kHz / 48-frame audio and USB MIDI;
+- a compile-time/static boundary test rejects any Daisy/libDaisy include under `core/` or `effects/`.
 
 ### Hardware smoke gate
 
@@ -313,7 +306,7 @@ The following claims require a real Daisy/Hothouse-class target and must not be 
 - tap tempo affects tempo-synchronized delay;
 - MIDI transport/control works through the selected physical transport;
 - actual sample rate and block size are recorded;
-- callback/CPU headroom is measured under representative processing;
+- callback/CPU headroom is measured under representative processing with libDaisy's `CpuLoadMeter` or equivalent timing evidence, with reporting performed outside the audio callback;
 - decaying feedback does not exhibit denormal-related callback spikes.
 
 If hardware is not available, implementation may merge the portable/control and cross-compilation portions only if #6 remains open with the hardware acceptance items explicitly unchecked.
