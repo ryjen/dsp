@@ -12,6 +12,8 @@ Run the existing host-independent DSP processors on a Daisy Seed-class pedal tar
 
 The target must prove that the same portable processor implementations can execute behind a hardware adapter, while physical controls, MIDI parsing, transport state, bypass behavior, and libDaisy-specific types remain outside `core/` and `effects/`.
 
+The reference hardware proof uses the existing `DelayProcessor` because it exercises stateful memory, tempo synchronization, feedback, live control changes, and bypass in one slice. Tremolo remains portable through the same `Processor` boundary but is not required to close #6.
+
 This slice establishes the realtime/hardware boundary. It does **not** define the external `guitarctl` preset/configuration protocol; that remains #7.
 
 ## Selected first target
@@ -30,7 +32,7 @@ The firmware target must not assume every future Daisy carrier has the Hothouse 
 
 ```text
                      portable DSP
-             Processor / Tremolo / Delay
+                  DelayProcessor
                         ^
                         | normalized state
                         |
@@ -41,7 +43,7 @@ The firmware target must not assume every future Daisy carrier has the Hothouse 
          state        updates        state
             ^           ^             ^
             |           |             |
-       MIDI adapter   pots/toggles  footswitch
+       MIDI adapter   pots/toggle   footswitch
             ^           ^             ^
             +-----------+-------------+
                         |
@@ -104,7 +106,7 @@ The exact type layout may vary during implementation, but the following constrai
 - invalid or unsupported controls are ignored or rejected before reaching processors;
 - effect processors never parse raw MIDI or inspect Daisy types.
 
-Concrete effect bindings may know the effect type. For example, a delay binding may map a normalized primary control to `set_delay_ms` and a secondary control to `set_feedback`. #6 does not introduce a generic reflection-based parameter system.
+Concrete effect bindings may know the effect type. The #6 reference binding targets `DelayProcessor`; it maps normalized controls to existing delay setters. #6 does not introduce a generic reflection-based parameter system.
 
 ### 2. MIDI boundary
 
@@ -119,37 +121,56 @@ References:
 
 The first target supports:
 
-- MIDI clock -> normalized tempo state;
+- MIDI clock -> normalized tempo observations;
 - Start / Stop / Continue -> transport state;
 - Control Change -> bounded normalized parameter changes;
 - Program Change -> bounded program-selection intent only.
 
-Program Change does not introduce persistent preset storage or the #7 external preset schema. A demonstration firmware may use a bounded built-in program table, but cross-repository preset/configuration ownership remains deferred to #7.
+Program Change does not introduce persistent preset storage or the #7 external preset schema. The translator surfaces a bounded program index; the #6 reference firmware is permitted to ignore program indices that have no built-in mapping.
 
 MIDI clock timing logic must be deterministic and separately testable. Clock timing state accepts monotonic timing observations and derives a bounded BPM estimate without allocating in the realtime path.
 
 Malformed, truncated, unsupported, or out-of-range input must fail closed at the adapter/translation boundary. Rapid valid control input must remain bounded, allocation-free, and exception-free.
 
-### 3. Physical controls
+### 3. Tempo ownership
 
-The initial Hothouse proof maps the minimum controls necessary to satisfy the issue:
+Tempo has exactly two local sources in #6: valid running MIDI clock and physical tap tempo.
 
-- Pot 1 -> primary effect control;
-- Pot 2 -> secondary effect control;
+Authority is deterministic:
+
+1. A valid running MIDI clock has priority.
+2. MIDI becomes authoritative after Start or Continue once a valid BPM estimate is available.
+3. MIDI remains authoritative while transport is running and clock observations remain fresh.
+4. A MIDI Stop, or clock timeout while running, releases MIDI authority.
+5. Tap tempo is accepted only while MIDI is not authoritative.
+6. Once accepted, tap tempo remains the active BPM until a valid running MIDI clock retakes authority or a later valid tap replaces it.
+7. If neither source has produced a valid BPM, the target starts at 120 BPM.
+
+The freshness timeout must be defined in elapsed monotonic time and remain valid across the supported 20–300 BPM range. The implementation plan must derive and test the exact timeout rather than using callback counts.
+
+Tempo publication is bounded to the existing delay range of 20–300 BPM. Source changes publish normalized BPM state; they never directly mutate delay-line memory.
+
+### 4. Physical controls
+
+The reference Hothouse/Delay mapping is explicit:
+
+- Pot 1 -> free delay time, mapped into `DelayProcessor::set_delay_ms`;
+- Pot 2 -> feedback, mapped into `DelayProcessor::set_feedback`;
+- Toggle 1 -> free / quarter-note / dotted-eighth subdivision;
 - Footswitch 1 -> bypass toggle;
 - Footswitch 2 -> tap tempo.
 
-Other pots, switches, and LEDs remain unassigned unless required for diagnostics or a concrete smoke-test need.
+The remaining five pots/toggles/LED behavior is outside the required proof unless needed for a bounded diagnostic indication.
+
+When Toggle 1 selects a synchronized subdivision, Pot 1 continues publishing the remembered free-time value but that value is not the effective delay time until free mode is selected again. This preserves the existing `DelayProcessor` semantics rather than inventing target-specific delay behavior.
 
 Physical controls are sampled/debounced outside the sample-processing inner loop. Their normalized state is published through bounded lock-free/fixed-state handoff and snapshotted by the audio callback at block boundaries.
 
-Tap tempo shares the normalized tempo state used by MIDI clock. MIDI and tap sources must not simultaneously mutate processor internals directly; arbitration happens in the control layer. The most recently valid explicit tempo source may become authoritative, with transport/MIDI clock able to retake ownership when valid clock resumes. The implementation plan must pin the exact deterministic arbitration rule in tests.
-
-### 4. Daisy audio adapter
+### 5. Daisy audio adapter
 
 The Daisy target owns conversion between libDaisy audio callback buffers and the existing `dsp::AudioBlock` / `Processor` contract.
 
-The target must use the same `TremoloProcessor` and/or `DelayProcessor` implementation already exercised by native tests. No Daisy-specific fork of an effect is permitted.
+The target must run the existing `DelayProcessor` implementation already exercised by native tests. No Daisy-specific fork of delay is permitted.
 
 The expected callback shape is:
 
@@ -158,7 +179,7 @@ Daisy input buffers
       |
       | copy/alias using prepared fixed storage
       v
-portable processor block
+existing DelayProcessor
       |
       v
 bypass crossfade / final output
@@ -176,9 +197,9 @@ Reference:
 
 The prototype baseline is 48 kHz. Block size is target configuration, not a core-DSP constant. The hardware evidence record must capture the actual sample rate, block size, callback period, and measured CPU/callback headroom.
 
-### 5. Bypass semantics
+### 6. Bypass semantics
 
-Bypass belongs to the pedal/runtime adapter, not individual effects.
+Bypass belongs to the pedal/runtime adapter, not `DelayProcessor`.
 
 The first implementation uses software dry-through with a short bounded gain crossfade between dry and processed paths. This prevents abrupt switching discontinuities without requiring hardware-relay true bypass.
 
@@ -191,9 +212,9 @@ output = crossfade(dry_input, processed, bypass_mix);
 
 The callback must preserve access to the dry input while processing the output buffer. Crossfade state is fixed-size and prepared ahead of callback execution.
 
-Hardware relay bypass is outside this slice unless the selected carrier exposes it trivially and it does not complicate the portable boundary.
+Hardware relay bypass is outside this slice.
 
-### 6. Denormals/subnormals
+### 7. Denormals/subnormals
 
 Do not assume denormal handling.
 
@@ -217,7 +238,7 @@ The firmware is intentionally local and bounded:
 - no dynamic configuration fetch during audio processing;
 - invalid input cannot write arbitrary processor state;
 - unsupported Program Change or CC values are ignored deterministically;
-- loss of MIDI input leaves the last valid bounded control state or transitions to a documented safe transport state;
+- loss of MIDI authority follows the tempo-ownership rules above;
 - processor preparation failure prevents audio processing from starting rather than continuing with partially initialized state.
 
 A firmware failure therefore cannot silently mutate practice-system state. Future #7 integration may provide an explicit versioned configuration contract, but that boundary remains additive.
@@ -269,11 +290,12 @@ Hardware-independent behavior must be deterministic and testable in ordinary CI:
 
 - MIDI event -> normalized control translation;
 - MIDI clock observations -> bounded BPM;
-- Start / Stop / Continue state;
+- Start / Stop / Continue and clock-timeout authority transitions;
 - CC normalization and out-of-range rejection;
 - bounded Program Change handling;
 - physical-control normalization;
-- tap-tempo state and source arbitration;
+- exact Pot 1 / Pot 2 / Toggle 1 / footswitch mapping;
+- tap-tempo state and MIDI-priority arbitration;
 - bypass ramp/crossfade behavior;
 - rapid control-change stress without callback allocation;
 - malformed/unsupported control input fails closed;
@@ -286,24 +308,24 @@ The following claims require a real Daisy/Hothouse-class target and must not be 
 
 - firmware flashes and boots;
 - stereo/mono audio I/O behaves as configured;
-- at least two pots affect processor state correctly;
+- Pot 1, Pot 2, and Toggle 1 affect the existing `DelayProcessor` as specified;
 - footswitch bypass works without an obvious switching artifact;
-- tap tempo affects tempo-synchronized processing;
+- tap tempo affects tempo-synchronized delay;
 - MIDI transport/control works through the selected physical transport;
 - actual sample rate and block size are recorded;
 - callback/CPU headroom is measured under representative processing;
 - decaying feedback does not exhibit denormal-related callback spikes.
 
-If hardware is not available, implementation may merge the portable/control and cross-compilation portions only if the issue remains open with the hardware acceptance items explicitly unchecked.
+If hardware is not available, implementation may merge the portable/control and cross-compilation portions only if #6 remains open with the hardware acceptance items explicitly unchecked.
 
 ## Acceptance mapping
 
 Issue #6 is complete only when:
 
-- the same portable processor implementation runs on the selected Daisy target;
+- the existing portable `DelayProcessor` runs on the selected Daisy target;
 - `core/` and `effects/` contain no Daisy SDK types/includes;
 - MIDI parsing/translation remains outside effect implementations;
-- two physical controls and at least one footswitch safely drive processor state;
+- Pot 1, Pot 2, Toggle 1, and the footswitches safely drive the specified state;
 - bypass semantics are implemented and verified;
 - actual hardware sample-rate/block-size/headroom evidence is recorded;
 - malformed control input and rapid valid changes remain bounded;
@@ -315,7 +337,7 @@ Issue #6 is complete only when:
 - #7 versioned `guitarctl` -> DSP preset/control protocol;
 - persistent/external preset storage;
 - custom pedal PCB/enclosure;
-- hardware-relay true bypass unless trivially available;
+- hardware-relay true bypass;
 - general multi-board hardware abstraction framework;
 - JUCE host integration (#9);
 - dynamics/phrasing analysis (#8).
