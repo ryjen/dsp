@@ -1,6 +1,6 @@
 # Daisy Pedal Target and Realtime Control Design
 
-- **Status:** Proposed — awaiting written-spec review
+- **Status:** Approved for implementation planning
 - **Date:** 2026-09-26
 - **Issue:** #6
 - **Parent:** #1
