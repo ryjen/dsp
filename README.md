@@ -4,9 +4,9 @@ Realtime guitar DSP, pedal firmware, realtime MIDI/control, and bounded performa
 
 ## Repository role
 
-`ryjen/dsp` is the realtime execution plane. `ryjen/guitar-practice-system` remains the control/orchestration plane for `guitarctl`, Score/Song IR, practice logic, backing/groove generation, and non-realtime MIDI composition.
+`ryjen/dsp` is the realtime execution plane. `ryjen/guitar-practice-system` remains the control/orchestration plane for `guitarctl`, canonical Score IR, practice logic, backing/groove generation, and non-realtime MIDI composition.
 
-The repositories integrate only through explicit, versioned contracts; neither should depend on the other's source tree.
+The repositories integrate only through explicit, versioned contracts; neither should depend on the other's source tree. Score IR remains owned by `guitar-practice-system` and is not a DSP runtime model; DSP-facing contracts should expose only the normalized preset/control/evidence data required by the realtime boundary.
 
 ## Architecture
 
@@ -69,4 +69,4 @@ Or run the pinned repository gate:
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-Issue #6 is the next critical-path slice: prototype the Daisy pedal target and realtime MIDI/control adapter.
+Issue #6 is the next critical-path slice: prototype the Daisy pedal target and realtime MIDI/control adapter. Issue #14 may proceed alongside it to promote the strict-warning and sanitizer evidence already used during review into the flake-driven CI contract.
