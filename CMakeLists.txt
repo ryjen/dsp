@@ -82,6 +82,7 @@ target_compile_options(dsp_pedal_control_state_test PRIVATE $<$<CXX_COMPILER_ID:
 add_library(dsp_daisy_control STATIC
     targets/daisy/src/tempo_controller.cpp
     targets/daisy/src/midi_adapter.cpp
+    targets/daisy/src/control_mapper.cpp
 )
 target_include_directories(dsp_daisy_control PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/targets/daisy/include)
 target_link_libraries(dsp_daisy_control PUBLIC dsp_core)
@@ -97,7 +98,13 @@ add_test(NAME dsp_midi_adapter_test COMMAND dsp_midi_adapter_test)
 target_compile_options(dsp_midi_adapter_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
 
 
+add_library(dsp_daisy_delay_binding STATIC
+    targets/daisy/src/delay_control_binding.cpp
+)
+target_include_directories(dsp_daisy_delay_binding PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/targets/daisy/include)
+target_link_libraries(dsp_daisy_delay_binding PUBLIC dsp_daisy_control dsp_delay)
+
 add_executable(dsp_control_mapper_test test/targets/daisy/control_mapper_test.cpp)
-target_link_libraries(dsp_control_mapper_test PRIVATE dsp_daisy_control dsp_delay)
+target_link_libraries(dsp_control_mapper_test PRIVATE dsp_daisy_delay_binding)
 add_test(NAME dsp_control_mapper_test COMMAND dsp_control_mapper_test)
 target_compile_options(dsp_control_mapper_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
