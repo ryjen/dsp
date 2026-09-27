@@ -27,6 +27,20 @@
 - `core/` and `effects/` may not include libDaisy/Daisy/Hothouse/MIDI packet types.
 - `HothouseExamples` remains reference-only because it is GPL-3.0; implementation depends only on MIT libDaisy plus published hardware/pin data.
 - #6 remains open until real hardware smoke/headroom/denormal evidence exists.
+- Apply Clean Architecture and SOLID: keep policy/control logic independent of libDaisy, keep each unit single-purpose, depend on narrow abstractions/value types, and compose concrete adapters at the target boundary.
+- Prefer composition and explicit Strategy/Adapter seams where behavior genuinely varies; do not introduce factories, registries, service locators, inheritance hierarchies, or generic frameworks without a concrete second implementation/use case.
+- Keep source files focused: control publication, tempo arbitration, MIDI translation, Hothouse mapping, runtime/bypass, and firmware composition remain separate responsibilities.
+
+## Design Quality Gate
+
+Every task review must reject changes that:
+- make `core/` or effect code depend on target details;
+- combine parsing, policy, mapping, and I/O in one class;
+- require mocks for ordinary domain behavior instead of dependency inversion/value inputs;
+- add abstraction without a present consumer;
+- hide ownership, lifetime, or realtime work behind global/service-locator state.
+
+Patterns expected where they earn their keep: **Adapter** for libDaisy/MIDI hardware translation, **Strategy-by-composition** for effect/control binding if a second binding appears, and **State/value-object** modeling for tempo/control publication. Do not pattern-match for its own sake.
 
 ## Review Focus
 
