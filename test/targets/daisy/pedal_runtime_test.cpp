@@ -112,14 +112,17 @@ int main() {
         if (value != 3.0F) return 9;
     }
 
+    GainProcessor null_gain;
+    PedalRuntime null_runtime;
+    if (!null_runtime.prepare({48000.0, 48, 2}, null_gain)) return 10;
+
     std::array<float, 48> valid_in{};
     std::array<float, 48> valid_out{};
     valid_in.fill(0.125F);
     const float* null_inputs[]{nullptr, valid_in.data()};
     float* null_outputs[]{nullptr, valid_out.data()};
-    runtime.set_bypassed(false);
-    runtime.process(null_inputs, null_outputs, 2, 48);
-    if (!all_equal(valid_out, 0.25F)) return 10;
+    null_runtime.process(null_inputs, null_outputs, 2, 48);
+    if (!all_equal(valid_out, 0.25F)) return 11;
 
     return 0;
 }
