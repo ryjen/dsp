@@ -79,7 +79,10 @@ void TempoController::on_tap(MonotonicMicros now) noexcept {
     if (now <= last_tap_) return;
 
     const MonotonicMicros interval = now - last_tap_;
-    if (interval < minimum_tap_interval || interval > maximum_tap_interval) {
+    if (interval < minimum_tap_interval) {
+        return;
+    }
+    if (interval > maximum_tap_interval) {
         last_tap_ = now;
         tap_interval_count_ = 0;
         tap_interval_index_ = 0;
