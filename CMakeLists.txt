@@ -108,3 +108,13 @@ add_executable(dsp_control_mapper_test test/targets/daisy/control_mapper_test.cp
 target_link_libraries(dsp_control_mapper_test PRIVATE dsp_daisy_delay_binding)
 add_test(NAME dsp_control_mapper_test COMMAND dsp_control_mapper_test)
 target_compile_options(dsp_control_mapper_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_pedal_runtime_test test/targets/daisy/pedal_runtime_test.cpp)
+target_link_libraries(dsp_pedal_runtime_test PRIVATE dsp_daisy_control dsp_delay)
+add_test(NAME dsp_pedal_runtime_test COMMAND dsp_pedal_runtime_test)
+
+add_executable(dsp_pedal_runtime_realtime_test test/targets/daisy/pedal_runtime_realtime_test.cpp)
+target_link_libraries(dsp_pedal_runtime_realtime_test PRIVATE dsp_daisy_control dsp_delay)
+add_test(NAME dsp_pedal_runtime_realtime_test COMMAND dsp_pedal_runtime_realtime_test)
+target_compile_options(dsp_pedal_runtime_realtime_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
