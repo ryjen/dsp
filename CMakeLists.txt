@@ -77,3 +77,16 @@ add_executable(dsp_pedal_control_state_test test/control/pedal_control_state_tes
 target_link_libraries(dsp_pedal_control_state_test PRIVATE dsp_core)
 add_test(NAME dsp_pedal_control_state_test COMMAND dsp_pedal_control_state_test)
 target_compile_options(dsp_pedal_control_state_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_tempo_controller_test test/targets/daisy/tempo_controller_test.cpp)
+target_include_directories(dsp_tempo_controller_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/targets/daisy/include)
+target_link_libraries(dsp_tempo_controller_test PRIVATE dsp_core)
+add_test(NAME dsp_tempo_controller_test COMMAND dsp_tempo_controller_test)
+target_compile_options(dsp_tempo_controller_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+add_executable(dsp_midi_adapter_test test/targets/daisy/midi_adapter_test.cpp)
+target_include_directories(dsp_midi_adapter_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/targets/daisy/include)
+target_link_libraries(dsp_midi_adapter_test PRIVATE dsp_core)
+add_test(NAME dsp_midi_adapter_test COMMAND dsp_midi_adapter_test)
+target_compile_options(dsp_midi_adapter_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
