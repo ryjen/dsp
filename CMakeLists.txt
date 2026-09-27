@@ -72,3 +72,8 @@ add_executable(dsp_delay_realtime_test test/effects/delay_realtime_test.cpp)
 target_link_libraries(dsp_delay_realtime_test PRIVATE dsp_native dsp_delay)
 add_test(NAME dsp_delay_realtime_test COMMAND dsp_delay_realtime_test)
 target_compile_options(dsp_delay_realtime_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+add_executable(dsp_pedal_control_state_test test/control/pedal_control_state_test.cpp)
+target_link_libraries(dsp_pedal_control_state_test PRIVATE dsp_core)
+add_test(NAME dsp_pedal_control_state_test COMMAND dsp_pedal_control_state_test)
+target_compile_options(dsp_pedal_control_state_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
