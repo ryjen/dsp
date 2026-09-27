@@ -95,3 +95,9 @@ add_executable(dsp_midi_adapter_test test/targets/daisy/midi_adapter_test.cpp)
 target_link_libraries(dsp_midi_adapter_test PRIVATE dsp_daisy_control)
 add_test(NAME dsp_midi_adapter_test COMMAND dsp_midi_adapter_test)
 target_compile_options(dsp_midi_adapter_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_control_mapper_test test/targets/daisy/control_mapper_test.cpp)
+target_link_libraries(dsp_control_mapper_test PRIVATE dsp_daisy_control dsp_delay)
+add_test(NAME dsp_control_mapper_test COMMAND dsp_control_mapper_test)
+target_compile_options(dsp_control_mapper_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
