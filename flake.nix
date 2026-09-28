@@ -120,12 +120,6 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
-          zz-daisy-firmware = pkgs.runCommand "dsp-daisy-firmware-check-red" { } ''
-            test -f ${self}/targets/daisy/CMakeLists.txt
-            test -f ${self}/targets/daisy/firmware/hothouse_main.cpp
-            touch "$out"
-          '';
-
           sanitizers = pkgs.clangStdenv.mkDerivation {
             pname = "dsp-sanitizer-check";
             version = "0.1.0";
