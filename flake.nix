@@ -95,6 +95,12 @@
             '';
           };
 
+          target-boundary = pkgs.runCommand "dsp-target-boundary-check" { nativeBuildInputs = [ pkgs.bash pkgs.gnugrep ]; } ''
+            cd ${self}
+            bash ./tools/check-target-boundary.sh
+            touch "$out"
+          '';
+
           faust-generated =
             pkgs.runCommand "dsp-faust-generated-check"
               {
@@ -114,6 +120,12 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          daisy-firmware = pkgs.runCommand "dsp-daisy-firmware-check-red" { } ''
+            test -f ${self}/targets/daisy/CMakeLists.txt
+            test -f ${self}/targets/daisy/firmware/hothouse_main.cpp
+            touch "$out"
+          '';
+
           sanitizers = pkgs.clangStdenv.mkDerivation {
             pname = "dsp-sanitizer-check";
             version = "0.1.0";
