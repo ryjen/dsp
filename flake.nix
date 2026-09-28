@@ -120,7 +120,7 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
-          daisy-firmware = pkgs.runCommand "dsp-daisy-firmware-check-red" { } ''
+          zz-daisy-firmware = pkgs.runCommand "dsp-daisy-firmware-check-red" { } ''
             test -f ${self}/targets/daisy/CMakeLists.txt
             test -f ${self}/targets/daisy/firmware/hothouse_main.cpp
             touch "$out"
