@@ -19,6 +19,13 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+          armToolchain = pkgs.gcc-arm-embedded;
+          libdaisy = pkgs.fetchgit {
+            url = "https://github.com/daisyaudio/libDaisy.git";
+            rev = "facb66c76b5482918741695f4268b0185e474644";
+            hash = "sha256-yQ7Xdsa1RnSLK6TJEHKq7xjJTe7KiG7pjA2My+3RUNU=";
+            fetchSubmodules = true;
+          };
         in
         {
           native = pkgs.stdenv.mkDerivation {
@@ -95,6 +102,12 @@
             '';
           };
 
+          target-boundary = pkgs.runCommand "dsp-target-boundary-check" { nativeBuildInputs = [ pkgs.bash pkgs.gnugrep ]; } ''
+            cd ${self}
+            bash ./tools/check-target-boundary.sh
+            touch "$out"
+          '';
+
           faust-generated =
             pkgs.runCommand "dsp-faust-generated-check"
               {
@@ -114,6 +127,42 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          daisy-firmware = pkgs.stdenv.mkDerivation {
+            pname = "dsp-daisy-firmware-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+              armToolchain
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S targets/daisy -B build-daisy -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_MAKE_PROGRAM=${pkgs.ninja}/bin/ninja \
+                -DDAISY_ARM_GCC=${armToolchain}/bin/arm-none-eabi-gcc \
+                -DLIBDAISY_DIR=${libdaisy} \
+                -DCMAKE_TOOLCHAIN_FILE=${self}/cmake/toolchains/daisy-arm-none-eabi.cmake
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build-daisy --target hothouse_delay
+              runHook postBuild
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              cp build-daisy/hothouse_delay.elf "$out/"
+              cp build-daisy/hothouse_delay.bin "$out/"
+              runHook postInstall
+            '';
+          };
+
           sanitizers = pkgs.clangStdenv.mkDerivation {
             pname = "dsp-sanitizer-check";
             version = "0.1.0";
