@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hid/MidiEvent.h"
+#include "hid/midi.h"
 
 #include <dsp/targets/daisy/midi_adapter.hpp>
 
