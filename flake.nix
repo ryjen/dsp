@@ -144,8 +144,7 @@
               cmake -S targets/daisy -B build-daisy -G Ninja \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_MAKE_PROGRAM=${pkgs.ninja}/bin/ninja \
-                -DCMAKE_C_COMPILER=${armGcc}/bin/arm-none-eabi-gcc \
-                -DCMAKE_CXX_COMPILER=${armGcc}/bin/arm-none-eabi-g++ \
+                -DDAISY_ARM_GCC=${armGcc}/bin/arm-none-eabi-gcc \
                 -DLIBDAISY_DIR=${libdaisy} \
                 -DCMAKE_TOOLCHAIN_FILE=${self}/cmake/toolchains/daisy-arm-none-eabi.cmake
               runHook postConfigure
