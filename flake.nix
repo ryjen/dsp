@@ -22,7 +22,7 @@
           libdaisy = pkgs.fetchgit {
             url = "https://github.com/daisyaudio/libDaisy.git";
             rev = "facb66c76b5482918741695f4268b0185e474644";
-            hash = pkgs.lib.fakeHash;
+            hash = "sha256-yQ7Xdsa1RnSLK6TJEHKq7xjJTe7KiG7pjA2My+3RUNU=";
             fetchSubmodules = true;
           };
         in
