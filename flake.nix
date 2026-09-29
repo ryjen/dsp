@@ -19,6 +19,12 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+          libdaisy = pkgs.fetchgit {
+            url = "https://github.com/daisyaudio/libDaisy.git";
+            rev = "facb66c76b5482918741695f4268b0185e474644";
+            hash = pkgs.lib.fakeHash;
+            fetchSubmodules = true;
+          };
         in
         {
           native = pkgs.stdenv.mkDerivation {
@@ -120,6 +126,41 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          daisy-firmware = pkgs.stdenv.mkDerivation {
+            pname = "dsp-daisy-firmware-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+              pkgs.pkgsCross.arm-embedded.buildPackages.gcc
+              pkgs.pkgsCross.arm-embedded.buildPackages.binutils
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S targets/daisy -B build-daisy -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DLIBDAISY_DIR=${libdaisy} \
+                -DCMAKE_TOOLCHAIN_FILE=${self}/cmake/toolchains/daisy-arm-none-eabi.cmake
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build-daisy --target hothouse_delay
+              runHook postBuild
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              cp build-daisy/hothouse_delay.elf "$out/"
+              cp build-daisy/hothouse_delay.bin "$out/"
+              runHook postInstall
+            '';
+          };
+
           sanitizers = pkgs.clangStdenv.mkDerivation {
             pname = "dsp-sanitizer-check";
             version = "0.1.0";
