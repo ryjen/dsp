@@ -19,7 +19,6 @@ public:
     static constexpr float max_feedback = 0.95F;
 
     DelayProcessor();
-    explicit DelayProcessor(std::span<float> external_storage);
     ~DelayProcessor() override;
 
     DelayProcessor(const DelayProcessor&) = delete;
@@ -27,11 +26,11 @@ public:
     DelayProcessor(DelayProcessor&&) = delete;
     DelayProcessor& operator=(DelayProcessor&&) = delete;
 
-    [[nodiscard]] static std::optional<std::size_t> required_storage_samples(
-        const ProcessSpec& spec) noexcept;
+    [[nodiscard]] static std::optional<std::size_t>
+    required_storage_samples(const ProcessSpec& spec) noexcept;
 
     bool prepare(const ProcessSpec& spec) override;
-    bool prepare(const ProcessSpec& spec, std::span<float> external_storage);
+    bool prepare(const ProcessSpec& spec, std::span<float> storage) noexcept;
     void reset() noexcept override;
     void process(AudioBlock block) noexcept override;
 

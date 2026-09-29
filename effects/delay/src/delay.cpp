@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <optional>
 #include <span>
 #include <utility>
 #include <vector>
@@ -13,8 +12,9 @@
 namespace dsp::effects {
 namespace {
 
-std::optional<std::size_t> storage_samples_for(
-    const ProcessSpec& spec) noexcept {
+std::optional<std::size_t> storage_layout(
+    const ProcessSpec& spec,
+    std::size_t& capacity) noexcept {
     if (!spec.valid()) return std::nullopt;
 
     const double max_samples = std::ceil(spec.sample_rate * 2.0);
@@ -24,11 +24,9 @@ std::optional<std::size_t> storage_samples_for(
         return std::nullopt;
     }
 
-    const std::size_t capacity =
-        static_cast<std::size_t>(max_samples) + 2U;
-    if (capacity == 0U ||
-        spec.channel_count >
-            std::numeric_limits<std::size_t>::max() / capacity) {
+    capacity = static_cast<std::size_t>(max_samples) + 2U;
+    if (spec.channel_count >
+        std::numeric_limits<std::size_t>::max() / capacity) {
         return std::nullopt;
     }
     return capacity * spec.channel_count;
@@ -38,52 +36,47 @@ std::optional<std::size_t> storage_samples_for(
 
 class DelayProcessor::Impl {
 public:
-    explicit Impl(std::span<float> storage = {}) noexcept
-        : external_storage{storage} {}
-
-    bool prepare(
+    bool prepare_owned(
         const ProcessSpec& new_spec,
         float free_delay_ms,
         float feedback_value,
         float mix_value,
         float bpm,
         DelaySubdivision subdivision) {
-        const auto required = storage_samples_for(new_spec);
+        std::size_t new_capacity{};
+        const auto required = storage_layout(new_spec, new_capacity);
         if (!required) return false;
 
-        const std::size_t new_capacity =
-            *required / new_spec.channel_count;
-
-        if (external_storage.empty()) {
-            std::vector<float> new_ring(*required, 0.0F);
-            owned_ring = std::move(new_ring);
-            ring = std::span<float>{owned_ring};
-        } else {
-            if (external_storage.size() < *required) return false;
-            ring = external_storage.first(*required);
-            std::fill(ring.begin(), ring.end(), 0.0F);
-        }
-
-        capacity = new_capacity;
-        spec = new_spec;
-        write_index = 0;
-        prepared = true;
-        reset_targets(
-            free_delay_ms, feedback_value, mix_value, bpm, subdivision);
-        return true;
+        std::vector<float> new_owned(*required, 0.0F);
+        owned_storage = std::move(new_owned);
+        return prepare_view(
+            new_spec,
+            std::span<float>{owned_storage},
+            new_capacity,
+            free_delay_ms,
+            feedback_value,
+            mix_value,
+            bpm,
+            subdivision);
     }
 
-    bool prepare(
+    bool prepare_external(
         const ProcessSpec& new_spec,
-        std::span<float> storage,
+        std::span<float> external_storage,
         float free_delay_ms,
         float feedback_value,
         float mix_value,
         float bpm,
-        DelaySubdivision subdivision) {
-        external_storage = storage;
-        return prepare(
+        DelaySubdivision subdivision) noexcept {
+        std::size_t new_capacity{};
+        const auto required = storage_layout(new_spec, new_capacity);
+        if (!required || external_storage.size() < *required) return false;
+
+        owned_storage.clear();
+        return prepare_view(
             new_spec,
+            external_storage.first(*required),
+            new_capacity,
             free_delay_ms,
             feedback_value,
             mix_value,
@@ -98,7 +91,7 @@ public:
         float bpm,
         DelaySubdivision subdivision) noexcept {
         if (!prepared) return;
-        std::fill(ring.begin(), ring.end(), 0.0F);
+        std::fill(storage.begin(), storage.end(), 0.0F);
         write_index = 0;
         reset_targets(
             free_delay_ms, feedback_value, mix_value, bpm, subdivision);
@@ -135,7 +128,7 @@ public:
 
     [[nodiscard]] std::size_t ramp_samples(double seconds) const noexcept {
         const double rounded = std::round(spec.sample_rate * seconds);
-        if (rounded <= 1.0) return 1;
+        if (rounded <= 1.0) return 1U;
         const double maximum =
             static_cast<double>(std::numeric_limits<std::size_t>::max());
         if (rounded >= maximum) return std::numeric_limits<std::size_t>::max();
@@ -177,19 +170,40 @@ public:
         const auto second = (first + 1U) % capacity;
         const float fraction = position - floor_position;
         const std::size_t base = channel * capacity;
-        return ring[base + first] * (1.0F - fraction) +
-               ring[base + second] * fraction;
+        return storage[base + first] * (1.0F - fraction) +
+               storage[base + second] * fraction;
     }
 
-    void write(
+    [[nodiscard]] float& sample(
         std::size_t channel,
-        float value) noexcept {
-        ring[channel * capacity + write_index] = value;
+        std::size_t frame) noexcept {
+        return storage[channel * capacity + frame];
     }
 
-    std::vector<float> owned_ring;
-    std::span<float> external_storage;
-    std::span<float> ring;
+private:
+    bool prepare_view(
+        const ProcessSpec& new_spec,
+        std::span<float> new_storage,
+        std::size_t new_capacity,
+        float free_delay_ms,
+        float feedback_value,
+        float mix_value,
+        float bpm,
+        DelaySubdivision subdivision) noexcept {
+        std::fill(new_storage.begin(), new_storage.end(), 0.0F);
+        storage = new_storage;
+        capacity = new_capacity;
+        spec = new_spec;
+        write_index = 0;
+        prepared = true;
+        reset_targets(
+            free_delay_ms, feedback_value, mix_value, bpm, subdivision);
+        return true;
+    }
+
+public:
+    std::vector<float> owned_storage;
+    std::span<float> storage;
     ProcessSpec spec{};
     std::size_t write_index{};
     std::size_t capacity{};
@@ -203,28 +217,25 @@ public:
 };
 
 DelayProcessor::DelayProcessor() : impl_(std::make_unique<Impl>()) {}
-
-DelayProcessor::DelayProcessor(std::span<float> external_storage)
-    : impl_(std::make_unique<Impl>(external_storage)) {}
-
 DelayProcessor::~DelayProcessor() = default;
 
 std::optional<std::size_t> DelayProcessor::required_storage_samples(
     const ProcessSpec& spec) noexcept {
-    return storage_samples_for(spec);
+    std::size_t capacity{};
+    return storage_layout(spec, capacity);
 }
 
 bool DelayProcessor::prepare(const ProcessSpec& spec) {
-    return impl_->prepare(
+    return impl_->prepare_owned(
         spec, delay_ms(), feedback(), mix(), tempo_bpm(), subdivision());
 }
 
 bool DelayProcessor::prepare(
     const ProcessSpec& spec,
-    std::span<float> external_storage) {
-    return impl_->prepare(
+    std::span<float> storage) noexcept {
+    return impl_->prepare_external(
         spec,
-        external_storage,
+        storage,
         delay_ms(),
         feedback(),
         mix(),
@@ -266,9 +277,8 @@ void DelayProcessor::process(AudioBlock block) noexcept {
 
             const float input = samples[frame];
             const float delayed = impl_->read(channel, delay_value);
-            impl_->write(
-                channel,
-                input + delayed * feedback_value);
+            impl_->sample(channel, impl_->write_index) =
+                input + delayed * feedback_value;
             samples[frame] =
                 input * (1.0F - mix_value) + delayed * mix_value;
         }
