@@ -17,3 +17,12 @@ list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
 )
 
 include("${LIBDAISY_DIR}/cmake/toolchains/ArmGNUToolchain.cmake")
+
+# nixpkgs' arm-embedded-nano target already builds newlib in nano mode.
+# libDaisy's nano.specs remapping expects GNU Arm bundle *_nano archive names
+# that nixpkgs intentionally does not use, so keep only the nosys syscall spec.
+set(
+    CMAKE_EXE_LINKER_FLAGS
+    "--specs=nosys.specs"
+    CACHE INTERNAL "Linker options" FORCE
+)

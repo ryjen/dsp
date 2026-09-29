@@ -19,9 +19,9 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          armGcc = pkgs.pkgsCross.arm-embedded.buildPackages.gcc;
+          armGcc = pkgs.pkgsCross.arm-embedded-nano.buildPackages.gcc;
           armGccRaw = armGcc.cc;
-          armBinutils = pkgs.pkgsCross.arm-embedded.buildPackages.binutils;
+          armBinutils = pkgs.pkgsCross.arm-embedded-nano.buildPackages.binutils;
           armToolchain = pkgs.runCommand "daisy-arm-none-eabi-toolchain" { } ''
             mkdir -p "$out/bin"
             ln -s ${armGcc}/bin/arm-none-eabi-gcc "$out/bin/arm-none-eabi-gcc"
