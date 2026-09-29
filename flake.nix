@@ -19,19 +19,7 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          armGcc = pkgs.pkgsCross.arm-embedded.buildPackages.gcc;
-          armGccRaw = armGcc.cc;
-          armBinutils = pkgs.pkgsCross.arm-embedded.buildPackages.binutils;
-          armToolchain = pkgs.runCommand "daisy-arm-none-eabi-toolchain" { } ''
-            mkdir -p "$out/bin"
-            ln -s ${armGcc}/bin/arm-none-eabi-gcc "$out/bin/arm-none-eabi-gcc"
-            ln -s ${armGcc}/bin/arm-none-eabi-g++ "$out/bin/arm-none-eabi-g++"
-            ln -s ${armGccRaw}/bin/arm-none-eabi-gcc-ar "$out/bin/arm-none-eabi-gcc-ar"
-            ln -s ${armGccRaw}/bin/arm-none-eabi-gcc-ranlib "$out/bin/arm-none-eabi-gcc-ranlib"
-            for tool in ar ld nm objcopy objdump ranlib size strip; do
-              ln -s "${armBinutils}/bin/arm-none-eabi-$tool" "$out/bin/arm-none-eabi-$tool"
-            done
-          '';
+          armToolchain = pkgs.gcc-arm-embedded;
           libdaisy = pkgs.fetchgit {
             url = "https://github.com/daisyaudio/libDaisy.git";
             rev = "facb66c76b5482918741695f4268b0185e474644";

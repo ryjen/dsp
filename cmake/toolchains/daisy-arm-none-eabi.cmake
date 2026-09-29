@@ -17,12 +17,3 @@ list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
 )
 
 include("${LIBDAISY_DIR}/cmake/toolchains/ArmGNUToolchain.cmake")
-
-# nixpkgs packages newlib separately from GCC and does not provide the
-# GNU Arm bundle's *_nano archive aliases expected by nano.specs.
-# Keep libDaisy's embedded nosys syscall contract while linking nixpkgs newlib.
-set(
-    CMAKE_EXE_LINKER_FLAGS
-    "--specs=nosys.specs"
-    CACHE INTERNAL "Linker options" FORCE
-)
