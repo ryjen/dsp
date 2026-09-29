@@ -28,7 +28,7 @@
             ln -s ${armGcc}/bin/arm-none-eabi-g++ "$out/bin/arm-none-eabi-g++"
             ln -s ${armGccRaw}/bin/arm-none-eabi-gcc-ar "$out/bin/arm-none-eabi-gcc-ar"
             ln -s ${armGccRaw}/bin/arm-none-eabi-gcc-ranlib "$out/bin/arm-none-eabi-gcc-ranlib"
-            for tool in ld nm objcopy objdump ranlib size strip; do
+            for tool in ar ld nm objcopy objdump ranlib size strip; do
               ln -s "${armBinutils}/bin/arm-none-eabi-$tool" "$out/bin/arm-none-eabi-$tool"
             done
           '';
