@@ -19,6 +19,8 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
+          armGcc = pkgs.pkgsCross.arm-embedded.buildPackages.gcc;
+          armBinutils = pkgs.pkgsCross.arm-embedded.buildPackages.binutils;
           libdaisy = pkgs.fetchgit {
             url = "https://github.com/daisyaudio/libDaisy.git";
             rev = "facb66c76b5482918741695f4268b0185e474644";
@@ -133,14 +135,17 @@
             nativeBuildInputs = [
               pkgs.cmake
               pkgs.ninja
-              pkgs.pkgsCross.arm-embedded.buildPackages.gcc
-              pkgs.pkgsCross.arm-embedded.buildPackages.binutils
+              armGcc
+              armBinutils
             ];
 
             configurePhase = ''
               runHook preConfigure
               cmake -S targets/daisy -B build-daisy -G Ninja \
                 -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_MAKE_PROGRAM=${pkgs.ninja}/bin/ninja \
+                -DCMAKE_C_COMPILER=${armGcc}/bin/arm-none-eabi-gcc \
+                -DCMAKE_CXX_COMPILER=${armGcc}/bin/arm-none-eabi-g++ \
                 -DLIBDAISY_DIR=${libdaisy} \
                 -DCMAKE_TOOLCHAIN_FILE=${self}/cmake/toolchains/daisy-arm-none-eabi.cmake
               runHook postConfigure
