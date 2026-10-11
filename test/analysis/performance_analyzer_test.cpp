@@ -14,6 +14,21 @@ namespace {
 std::atomic<bool> tracking{false};
 std::atomic<std::size_t> allocations{0};
 
+bool same_observation(
+    const dsp::analysis::PerformanceObservationV1& left,
+    const dsp::analysis::PerformanceObservationV1& right) {
+    return left.version == right.version &&
+           left.quality_flags == right.quality_flags &&
+           left.has_inter_event_spacing == right.has_inter_event_spacing &&
+           left.start_frame == right.start_frame &&
+           left.end_frame == right.end_frame &&
+           left.timestamp_ms == right.timestamp_ms &&
+           left.attack_ms == right.attack_ms &&
+           left.duration_ms == right.duration_ms &&
+           left.inter_event_spacing_ms == right.inter_event_spacing_ms &&
+           left.peak_milli == right.peak_milli;
+}
+
 dsp::analysis::PerformanceAnalyzerConfig fixture_config() {
     dsp::analysis::PerformanceAnalyzerConfig config;
     config.onset_threshold = 0.08F;
@@ -92,6 +107,20 @@ int main() {
     if (second->has_inter_event_spacing != 1U) return 18;
     if (second->inter_event_spacing_ms != 10U) return 19;
     if (queue.pop()) return 20;
+
+    PerformanceObservationQueue chunked_queue;
+    PerformanceAnalyzer chunked{chunked_queue, fixture_config()};
+    if (!chunked.prepare({1000.0, 10U, 1U})) return 101;
+    chunked.reset();
+    for (std::size_t offset = 0U; offset < input.size(); offset += 10U) {
+        float* chunk_channels[] = {input.data() + offset};
+        chunked.process({chunk_channels, 1U, 10U});
+    }
+    const auto chunked_first = chunked_queue.pop();
+    const auto chunked_second = chunked_queue.pop();
+    if (!chunked_first || !chunked_second || chunked_queue.pop()) return 102;
+    if (!same_observation(*first, *chunked_first)) return 103;
+    if (!same_observation(*second, *chunked_second)) return 104;
 
     PerformanceObservationQueue uncertain_queue;
     auto uncertain_config = fixture_config();
