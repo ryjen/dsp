@@ -449,3 +449,14 @@ When a real Hothouse/Daisy target is available:
 - record `CpuLoadMeter` or equivalent callback/headroom evidence outside callback;
 - run long feedback decay and inspect callback load/non-finite output for denormal issues;
 - attach evidence to #6 and only then check hardware acceptance items / close #6.
+
+
+## Post-implementation review adjustments
+
+Whole-branch review tightened three implementation details beyond the original task wording:
+
+- Daisy time remains the native 32-bit microsecond tick rather than being extended to a synthetic uint64 clock. Portable policy uses modulo-32 elapsed arithmetic with a half-range validity bound, and rollover regression tests cover both MIDI clock and debounce.
+- libDaisy SystemRealTime events use `StartReceiveRt` to preserve arrival timing in a fixed 64-entry SPSC `RealtimeMidiInbox`. The receive callback only translates/timestamps/queues; the main loop remains the sole tempo/control-state writer. Full inbox behavior is fail-closed: drop newest.
+- Delay external-storage preparation now has a strong failure guarantee: an invalid/undersized candidate span is rejected before replacing the existing storage binding.
+
+These are review fixes to the approved architecture, not new product scope.

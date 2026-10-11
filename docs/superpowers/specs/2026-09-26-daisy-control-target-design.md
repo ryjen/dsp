@@ -93,7 +93,7 @@ Concrete effect bindings may know the effect type. The #6 reference binding maps
 
 ### 2. MIDI boundary
 
-Raw MIDI transport and packet parsing live under the Daisy target adapter. USB receive/parsing callbacks do not mutate processor/control state directly; parsed events are drained and validated by the single-writer control/main loop before publication.
+Raw MIDI transport and packet parsing live under the Daisy target adapter. libDaisy SystemRealTime receive callbacks do not mutate processor/control state: they translate to a bounded project-owned MIDI value, attach the raw 32-bit microsecond arrival tick, and push it into a fixed 64-entry SPSC inbox. The single-writer control/main loop drains that inbox, validates/translates the message into control intent, and only then mutates tempo/control state. If the inbox is full, the newest realtime message is dropped rather than blocking or allocating.
 
 libDaisy currently provides `MidiHandler` with UART and USB transports; the transport/parser produces MIDI events before project code translates them into normalized controls.
 
@@ -114,7 +114,7 @@ The target supports:
 
 Other channel-voice messages, channels, CC numbers, SysEx, and Program Change are ignored in #6. Persistent or externally selected presets remain #7.
 
-MIDI clock timing logic must be deterministic and separately testable. MIDI Clock is interpreted at 24 pulses per quarter note. After at least two valid observations, BPM derives from elapsed monotonic time and is clamped to 20–300 BPM. A bounded moving estimate over the most recent 24 pulse intervals is permitted to reduce jitter; storage must be fixed-size and callback-allocation-free.
+MIDI clock timing logic must be deterministic and separately testable. MIDI Clock is interpreted at 24 pulses per quarter note. The Daisy source clock is a 32-bit microsecond counter, so timing uses modulo-32 unsigned elapsed arithmetic; every accepted policy interval is far below the half-range and therefore remains correct across counter rollover. After at least two valid observations, BPM derives from elapsed time and is clamped to 20–300 BPM. A bounded moving estimate over the most recent 24 pulse intervals is permitted to reduce jitter; storage must be fixed-size and callback-allocation-free.
 
 Malformed, truncated, unsupported, or out-of-range input must fail closed at the adapter/translation boundary. Rapid valid control input must remain bounded, allocation-free, and exception-free.
 
@@ -132,7 +132,7 @@ Authority is deterministic:
 6. Once accepted, tap tempo remains the active BPM until a valid running MIDI clock retakes authority or a later valid tap replaces it.
 7. If neither source has produced a valid BPM, the target starts at 120 BPM.
 
-Clock freshness uses elapsed monotonic time, never callback counts. After a valid estimate exists, MIDI authority expires when no clock pulse arrives for `max(250 ms, 6 * expected_clock_interval)`. This remains tolerant at the 20 BPM lower bound while releasing authority promptly at faster tempos.
+Clock freshness uses wrap-safe elapsed microseconds, never callback counts. After a valid estimate exists, MIDI authority expires when no clock pulse arrives for `max(250 ms, 6 * expected_clock_interval)`. This remains tolerant at the 20 BPM lower bound while releasing authority promptly at faster tempos. A timeout clears stale clock-observation history while preserving the last published audible tempo; authority is reacquired only from fresh observations rather than averaging the dropout gap.
 
 Tap tempo accepts intervals corresponding to 20–300 BPM (200–3000 ms). Out-of-range taps are ignored. Two valid taps establish a tempo; later valid taps update it using a fixed-size average of at most the last four intervals.
 

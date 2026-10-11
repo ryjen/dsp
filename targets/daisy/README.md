@@ -10,9 +10,12 @@ Cleveland Music Co. Hothouse carrier with a Daisy Seed/Seed3.
 - Delay history is caller-owned SDRAM so the two-second stereo buffer does not
   consume the default internal SRAM heap.
 - USB MIDI: Clock, Start/Stop/Continue, channel-1 CC20/CC21.
+- SystemRealTime arrival timestamps are preserved through a fixed 64-entry SPSC inbox; overflow drops newest rather than blocking.
+- 32-bit Daisy microsecond ticks use rollover-safe unsigned elapsed arithmetic.
 - Hothouse Pot 1/2, Toggle 1, and Footswitch 1/2 are target adapters only.
-- Audio callback performs DSP/bypass/CPU timing only. MIDI parsing and control
-  sampling stay in the main loop.
+- Audio callback performs DSP/bypass/CPU timing only. The USB realtime callback
+  only timestamps/translates and queues bounded messages; MIDI/control policy and
+  physical-control sampling stay in the main loop.
 
 ## Source boundaries
 

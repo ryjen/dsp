@@ -54,6 +54,10 @@ Valid running MIDI clock has priority over tap tempo. Stop or a monotonic-time c
 
 Raw libDaisy `MidiEvent` values are translated at the target boundary into project-owned bounded MIDI values before the portable translation/policy layer sees them.
 
+SystemRealTime events take a timing-preserving path: libDaisy's realtime receive callback records the 32-bit microsecond arrival tick and enqueues the project-owned message in a fixed 64-entry SPSC inbox. The callback never mutates tempo or processor state. The single-writer main loop drains the inbox and performs policy mutation. A full inbox drops the newest message rather than blocking or allocating.
+
+Daisy's microsecond counter wraps at 32 bits. Tempo/debounce policy therefore uses modulo-32 unsigned elapsed arithmetic with a half-range validity bound; all accepted control/timing windows are only milliseconds or seconds. Timeout clears stale MIDI interval history while retaining the last audible tempo so resumed clock must establish fresh timing before reclaiming authority.
+
 ## Physical controls
 
 The reference binding is intentionally concrete:
@@ -76,7 +80,7 @@ The runtime prepares dry scratch sized to the process specification and performs
 
 `DelayProcessor` supports both host-owned storage and caller-owned external storage.
 
-Desktop/native preparation may allocate its bounded delay storage outside the callback. Embedded firmware provides caller-owned storage in Daisy SDRAM, preserving the same processor implementation while avoiding an impossible internal-SRAM heap requirement.
+Desktop/native preparation may allocate its bounded delay storage outside the callback. Embedded firmware provides caller-owned storage in Daisy SDRAM, preserving the same processor implementation while avoiding an impossible internal-SRAM heap requirement. External-storage preparation validates a candidate span before committing the binding, so a failed prepare leaves the processor able to use its previous/owned storage path.
 
 The Hothouse firmware reserves 192,004 float samples in SDRAM for the 48 kHz / stereo / two-second delay configuration. The linker evidence from the hosted cross-build reports approximately 768 KiB of SDRAM use and low internal SRAM use.
 
@@ -97,7 +101,7 @@ The Cleveland Music Co. `HothouseExamples` firmware repository is GPL-3.0 and is
 
 The firmware target is configured for 48 kHz / 48-frame stereo audio, giving a nominal 1 ms callback deadline.
 
-The audio callback performs only bounded audio/runtime work plus CPU-load timing. MIDI parsing, physical-control sampling, debounce, and policy updates stay in the main/control loop. Callback allocation, filesystem/network I/O, logging, blocking locks, and unbounded parsing remain prohibited.
+The audio callback performs only bounded audio/runtime work plus CPU-load timing. The USB realtime callback only timestamps/translates and enqueues a bounded MIDI message; physical-control sampling, debounce, MIDI policy validation, and processor/control mutation stay in the main/control loop. Callback allocation, filesystem/network I/O, logging, blocking locks, and unbounded parsing remain prohibited.
 
 `CpuLoadMeter` is initialized for the configured block/sample rate, but measured hardware headroom must be recorded outside the callback on real hardware before #6 is complete.
 
