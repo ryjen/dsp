@@ -68,6 +68,18 @@ preset name never selects hidden firmware state.
 Neither repository imports the other's source tree. See
 `docs/adr/0005-guitar-dsp-preset-v1.md`.
 
+## guitarctl preset protocol
+
+Issue #7 defines the first versioned control-plane contract between `guitarctl` and the realtime DSP layer: `guitar-dsp.preset` v1.
+
+v1 is deliberately narrow. It carries an opaque preset slug, integer tempo, and the four delay controls already implemented by `DelayProcessor`. Feedback and mix use integer milli-units so Python and C++ can produce byte-identical canonical JSON without floating-point text ambiguity.
+
+The DSP-side parser accepts only the frozen canonical v1 wire representation, is bounded to 256 input bytes, and performs no dynamic allocation. Human-edited JSON canonicalization remains the producer's responsibility in `ryjen/guitar-practice-system`; the repositories share protocol bytes and semantics, never source code.
+
+The canonical jazz-blues fixture is byte-identical across both repositories. Live transfer framing, acknowledgements, device discovery, persistent presets, generic parameter registries, and automatic Score IR/practice mapping remain outside v1.
+
+See `docs/adr/0005-guitar-dsp-preset-v1.md` and `docs/superpowers/specs/2026-10-11-guitar-dsp-preset-v1-design.md`.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
