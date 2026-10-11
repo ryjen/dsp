@@ -57,16 +57,16 @@ private:
     static constexpr MonotonicMicros debounce_micros = 20000;
     static constexpr float pot_deadband = 0.002F;
 
-    void publish_primary(float normalized, bool apply_deadband) noexcept;
-    void publish_secondary(float normalized, bool apply_deadband) noexcept;
+    void publish_primary(float normalized) noexcept;
+    void publish_secondary(float normalized) noexcept;
     void publish_mode(dsp::control::PedalMode mode) noexcept;
     void publish_bypass_toggle() noexcept;
     void publish_tempo() noexcept;
 
     dsp::control::PedalControlState& state_;
     TempoController& tempo_;
-    float last_primary_{0.0F};
-    float last_secondary_{0.0F};
+    float last_physical_primary_{0.0F};
+    float last_physical_secondary_{0.0F};
     DebouncedInput<std::uint8_t> toggle1_{};
     DebouncedInput<bool> footswitch1_{};
     DebouncedInput<bool> footswitch2_{};
