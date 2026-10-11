@@ -138,7 +138,13 @@ add_test(NAME dsp_realtime_midi_inbox_test COMMAND dsp_realtime_midi_inbox_test)
 target_compile_options(dsp_realtime_midi_inbox_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
 
 
+add_library(dsp_guitar_dsp_protocol STATIC
+    protocols/src/guitar_dsp_preset_v1.cpp
+)
+target_include_directories(dsp_guitar_dsp_protocol PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/protocols/include)
+target_compile_features(dsp_guitar_dsp_protocol PUBLIC cxx_std_20)
+
 add_executable(dsp_guitar_dsp_preset_v1_test test/protocols/guitar_dsp_preset_v1_test.cpp)
-target_include_directories(dsp_guitar_dsp_preset_v1_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/protocols/include)
+target_link_libraries(dsp_guitar_dsp_preset_v1_test PRIVATE dsp_guitar_dsp_protocol)
 add_test(NAME dsp_guitar_dsp_preset_v1_test COMMAND dsp_guitar_dsp_preset_v1_test)
 target_compile_options(dsp_guitar_dsp_preset_v1_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
