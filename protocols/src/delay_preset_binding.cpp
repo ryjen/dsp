@@ -28,14 +28,18 @@ dsp::effects::DelaySubdivision map_subdivision(
 
 }  // namespace
 
-void apply_delay_preset_v1(
+ProtocolError apply_delay_preset_v1(
     const DelayPresetV1& preset,
     dsp::effects::DelayProcessor& delay) noexcept {
+    const ProtocolError error = validate_preset_v1(preset);
+    if (error != ProtocolError::none) return error;
+
     delay.set_tempo_bpm(static_cast<float>(preset.tempo_bpm));
     delay.set_feedback(static_cast<float>(preset.feedback_milli) / 1000.0F);
     delay.set_delay_ms(static_cast<float>(preset.free_ms));
     delay.set_mix(static_cast<float>(preset.mix_milli) / 1000.0F);
     delay.set_subdivision(map_subdivision(preset.subdivision));
+    return ProtocolError::none;
 }
 
 }  // namespace dsp::protocols
