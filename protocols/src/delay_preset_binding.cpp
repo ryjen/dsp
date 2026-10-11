@@ -5,40 +5,37 @@
 namespace dsp::protocols {
 namespace {
 
-dsp::effects::DelaySubdivision to_delay_subdivision(
+dsp::effects::DelaySubdivision map_subdivision(
     PresetSubdivisionV1 value) noexcept {
-    using Target = dsp::effects::DelaySubdivision;
+    using dsp::effects::DelaySubdivision;
+
     switch (value) {
         case PresetSubdivisionV1::free:
-            return Target::free;
+            return DelaySubdivision::free;
         case PresetSubdivisionV1::quarter:
-            return Target::quarter;
+            return DelaySubdivision::quarter;
         case PresetSubdivisionV1::dotted_eighth:
-            return Target::dotted_eighth;
+            return DelaySubdivision::dotted_eighth;
         case PresetSubdivisionV1::eighth:
-            return Target::eighth;
+            return DelaySubdivision::eighth;
         case PresetSubdivisionV1::eighth_triplet:
-            return Target::eighth_triplet;
+            return DelaySubdivision::eighth_triplet;
         case PresetSubdivisionV1::sixteenth:
-            return Target::sixteenth;
+            return DelaySubdivision::sixteenth;
     }
-    return Target::free;
+    return DelaySubdivision::free;
 }
 
 }  // namespace
 
-ProtocolError apply_delay_preset_v1(
+void apply_delay_preset_v1(
     const DelayPresetV1& preset,
-    dsp::effects::DelayProcessor& processor) noexcept {
-    const auto error = validate_preset_v1(preset);
-    if (error != ProtocolError::none) return error;
-
-    processor.set_delay_ms(static_cast<float>(preset.free_ms));
-    processor.set_feedback(static_cast<float>(preset.feedback_milli) / 1000.0F);
-    processor.set_mix(static_cast<float>(preset.mix_milli) / 1000.0F);
-    processor.set_tempo_bpm(static_cast<float>(preset.tempo_bpm));
-    processor.set_subdivision(to_delay_subdivision(preset.subdivision));
-    return ProtocolError::none;
+    dsp::effects::DelayProcessor& delay) noexcept {
+    delay.set_tempo_bpm(static_cast<float>(preset.tempo_bpm));
+    delay.set_feedback(static_cast<float>(preset.feedback_milli) / 1000.0F);
+    delay.set_delay_ms(static_cast<float>(preset.free_ms));
+    delay.set_mix(static_cast<float>(preset.mix_milli) / 1000.0F);
+    delay.set_subdivision(map_subdivision(preset.subdivision));
 }
 
 }  // namespace dsp::protocols

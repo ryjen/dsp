@@ -8,8 +8,8 @@ class DelayProcessor;
 
 namespace dsp::protocols {
 
-[[nodiscard]] ProtocolError apply_delay_preset_v1(
+void apply_delay_preset_v1(
     const DelayPresetV1& preset,
-    dsp::effects::DelayProcessor& processor) noexcept;
+    dsp::effects::DelayProcessor& delay) noexcept;
 
 }  // namespace dsp::protocols

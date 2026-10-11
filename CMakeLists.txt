@@ -150,6 +150,12 @@ add_test(NAME dsp_guitar_dsp_preset_v1_test COMMAND dsp_guitar_dsp_preset_v1_tes
 target_compile_options(dsp_guitar_dsp_preset_v1_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
 
 
+add_library(dsp_delay_preset_binding STATIC
+    protocols/src/delay_preset_binding.cpp
+)
+target_include_directories(dsp_delay_preset_binding PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/protocols/include)
+target_link_libraries(dsp_delay_preset_binding PUBLIC dsp_guitar_dsp_protocol dsp_delay)
+
 add_executable(dsp_delay_preset_binding_test test/protocols/delay_preset_binding_test.cpp)
-target_link_libraries(dsp_delay_preset_binding_test PRIVATE dsp_guitar_dsp_protocol dsp_delay)
+target_link_libraries(dsp_delay_preset_binding_test PRIVATE dsp_delay_preset_binding)
 add_test(NAME dsp_delay_preset_binding_test COMMAND dsp_delay_preset_binding_test)
