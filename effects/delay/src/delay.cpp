@@ -81,6 +81,9 @@ public:
         float mix_value,
         float bpm,
         DelaySubdivision subdivision) {
+        const auto required = storage_samples_for(new_spec);
+        if (!required || storage.size() < *required) return false;
+
         external_storage = storage;
         return prepare(
             new_spec,
