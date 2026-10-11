@@ -37,6 +37,12 @@ The single-writer control loop validates physical controls and decoded MIDI, upd
 
 Continuous controls are latest-value-wins values. Debounced momentary controls are converted to final state before publication. No unbounded queue or callback-time parsing is introduced.
 
+## Snapshot consistency model
+
+`PedalControlState` intentionally provides field-wise latest-value publication rather than aggregate transactional snapshots. Each scalar is independently bounded and semantically valid with any contemporaneous value of the other controls; there is no cross-field invariant between primary, secondary, tempo, mode, bypass, and transport.
+
+This avoids locks, allocation, and retry loops in the realtime handoff. Code that introduces future state with a true cross-field invariant must use a separate coherency mechanism rather than assuming this state object provides transactional generations.
+
 ## MIDI and tempo ownership
 
 The first physical transport is USB MIDI.

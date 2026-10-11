@@ -16,17 +16,27 @@ ControlMapper::ControlMapper(
     TempoController& tempo) noexcept
     : state_{state}, tempo_{tempo} {
     const auto current = state_.snapshot();
-    last_primary_ = current.primary_normalized;
-    last_secondary_ = current.secondary_normalized;
+    last_physical_primary_ = current.primary_normalized;
+    last_physical_secondary_ = current.secondary_normalized;
     toggle1_.stable = static_cast<std::uint8_t>(current.mode);
 }
 
 void ControlMapper::update_pot1(float normalized) noexcept {
-    publish_primary(normalized, true);
+    if (!valid_normalized(normalized)) return;
+    if (std::abs(normalized - last_physical_primary_) < pot_deadband) {
+        return;
+    }
+    last_physical_primary_ = normalized;
+    publish_primary(normalized);
 }
 
 void ControlMapper::update_pot2(float normalized) noexcept {
-    publish_secondary(normalized, true);
+    if (!valid_normalized(normalized)) return;
+    if (std::abs(normalized - last_physical_secondary_) < pot_deadband) {
+        return;
+    }
+    last_physical_secondary_ = normalized;
+    publish_secondary(normalized);
 }
 
 void ControlMapper::update_toggle1(
@@ -60,9 +70,9 @@ void ControlMapper::apply_midi_control(
     std::uint8_t cc,
     float normalized) noexcept {
     if (cc == 20U) {
-        publish_primary(normalized, false);
+        publish_primary(normalized);
     } else if (cc == 21U) {
-        publish_secondary(normalized, false);
+        publish_secondary(normalized);
     }
 }
 
@@ -70,31 +80,15 @@ dsp::control::PedalControlSnapshot ControlMapper::snapshot() const noexcept {
     return state_.snapshot();
 }
 
-void ControlMapper::publish_primary(
-    float normalized,
-    bool apply_deadband) noexcept {
+void ControlMapper::publish_primary(float normalized) noexcept {
     if (!valid_normalized(normalized)) return;
-    if (apply_deadband &&
-        std::abs(normalized - last_primary_) < pot_deadband) {
-        return;
-    }
-
-    last_primary_ = normalized;
     auto next = state_.snapshot();
     next.primary_normalized = normalized;
     state_.publish(next);
 }
 
-void ControlMapper::publish_secondary(
-    float normalized,
-    bool apply_deadband) noexcept {
+void ControlMapper::publish_secondary(float normalized) noexcept {
     if (!valid_normalized(normalized)) return;
-    if (apply_deadband &&
-        std::abs(normalized - last_secondary_) < pot_deadband) {
-        return;
-    }
-
-    last_secondary_ = normalized;
     auto next = state_.snapshot();
     next.secondary_normalized = normalized;
     state_.publish(next);
