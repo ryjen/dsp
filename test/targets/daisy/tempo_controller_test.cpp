@@ -30,6 +30,7 @@ void operator delete[](void* memory) noexcept { ::operator delete(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { ::operator delete(memory); }
 
 int main() {
+    using dsp::targets::daisy::MonotonicMicros;
     using dsp::targets::daisy::TempoController;
 
     TempoController midi;
