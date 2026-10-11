@@ -130,3 +130,9 @@ add_executable(dsp_delay_external_storage_test test/effects/delay_external_stora
 target_link_libraries(dsp_delay_external_storage_test PRIVATE dsp_delay)
 add_test(NAME dsp_delay_external_storage_test COMMAND dsp_delay_external_storage_test)
 target_compile_options(dsp_delay_external_storage_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_realtime_midi_inbox_test test/targets/daisy/realtime_midi_inbox_test.cpp)
+target_link_libraries(dsp_realtime_midi_inbox_test PRIVATE dsp_daisy_control)
+add_test(NAME dsp_realtime_midi_inbox_test COMMAND dsp_realtime_midi_inbox_test)
+target_compile_options(dsp_realtime_midi_inbox_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
