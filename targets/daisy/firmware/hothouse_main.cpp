@@ -25,6 +25,7 @@ using dsp::targets::daisy::ControlEventKind;
 using dsp::targets::daisy::ControlMapper;
 using dsp::targets::daisy::DelayControlBinding;
 using dsp::targets::daisy::MidiAdapter;
+using dsp::targets::daisy::MidiMessage;
 using dsp::targets::daisy::PedalRuntime;
 using dsp::targets::daisy::RealtimeMidiInbox;
 using dsp::targets::daisy::TempoController;
