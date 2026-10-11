@@ -68,6 +68,18 @@ The canonical jazz-blues fixture is byte-identical across both repositories. Liv
 
 See `docs/adr/0005-guitar-dsp-preset-v1.md` and `docs/superpowers/specs/2026-10-11-guitar-dsp-preset-v1-design.md`.
 
+## Bounded performance analysis
+
+`analysis/` is separate from effects and practice policy. The first
+`PerformanceAnalyzer` observes a mono signal with a deterministic envelope/transient
+detector and publishes fixed-size `PerformanceObservationV1` records through a
+64-entry lock-free SPSC queue.
+
+Observations report signal timing/level plus detector-quality flags; they do not
+claim note identity, musical correctness, mastery, or a recommended practice action.
+Queue overflow is explicit and never blocks the audio callback. See
+`docs/adr/0006-bounded-performance-observations.md`.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.

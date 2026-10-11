@@ -73,6 +73,51 @@ target_link_libraries(dsp_delay_realtime_test PRIVATE dsp_native dsp_delay)
 add_test(NAME dsp_delay_realtime_test COMMAND dsp_delay_realtime_test)
 target_compile_options(dsp_delay_realtime_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
 
+
+
+add_library(dsp_analysis STATIC
+    analysis/src/performance_analyzer.cpp
+)
+target_include_directories(
+    dsp_analysis
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/analysis/include
+)
+target_link_libraries(dsp_analysis PUBLIC dsp_core)
+
+add_executable(
+    dsp_performance_observation_queue_test
+    test/analysis/performance_observation_queue_test.cpp
+)
+target_link_libraries(
+    dsp_performance_observation_queue_test
+    PRIVATE dsp_analysis
+)
+add_test(
+    NAME dsp_performance_observation_queue_test
+    COMMAND dsp_performance_observation_queue_test
+)
+target_compile_options(
+    dsp_performance_observation_queue_test
+    PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>
+)
+
+add_executable(
+    dsp_performance_analyzer_test
+    test/analysis/performance_analyzer_test.cpp
+)
+target_link_libraries(
+    dsp_performance_analyzer_test
+    PRIVATE dsp_analysis dsp_native
+)
+add_test(
+    NAME dsp_performance_analyzer_test
+    COMMAND dsp_performance_analyzer_test
+)
+target_compile_options(
+    dsp_performance_analyzer_test
+    PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>
+)
+
 add_executable(dsp_pedal_control_state_test test/control/pedal_control_state_test.cpp)
 target_link_libraries(dsp_pedal_control_state_test PRIVATE dsp_core)
 add_test(NAME dsp_pedal_control_state_test COMMAND dsp_pedal_control_state_test)
