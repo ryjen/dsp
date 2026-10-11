@@ -91,5 +91,83 @@ int main() {
     tracking.store(false, std::memory_order_release);
     if (allocations.load(std::memory_order_relaxed) != 0U) return 17;
 
+
+    const auto parsed = parse_preset_v1(expected);
+    if (parsed.error != ProtocolError::none) return 18;
+    if (parsed.value.preset_name() != "jazz-blues") return 19;
+    if (parsed.value.tempo_bpm != 92U) return 20;
+    if (parsed.value.feedback_milli != 320U) return 21;
+    if (parsed.value.free_ms != 375U) return 22;
+    if (parsed.value.mix_milli != 500U) return 23;
+    if (parsed.value.subdivision != PresetSubdivisionV1::dotted_eighth) return 24;
+
+    const auto reparsed_encoded = serialize_preset_v1(parsed.value, buffer);
+    if (reparsed_encoded.error != ProtocolError::none) return 25;
+    if (std::string_view{buffer.data(), reparsed_encoded.size} != expected) return 26;
+
+    std::array<char, 257> oversized{};
+    oversized.fill('x');
+    if (parse_preset_v1(std::string_view{oversized.data(), oversized.size()}).error !=
+        ProtocolError::too_large) return 27;
+
+    constexpr std::string_view whitespace =
+        R"({ "schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(whitespace).error != ProtocolError::non_canonical) return 28;
+
+    constexpr std::string_view reordered =
+        R"({"version":1,"schema":"guitar-dsp.preset","preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(reordered).error != ProtocolError::non_canonical) return 29;
+
+    constexpr std::string_view wrong_schema =
+        R"({"schema":"other","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(wrong_schema).error != ProtocolError::wrong_schema) return 30;
+
+    constexpr std::string_view wrong_version =
+        R"({"schema":"guitar-dsp.preset","version":2,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(wrong_version).error != ProtocolError::unsupported_version) return 31;
+
+    constexpr std::string_view bad_preset =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"Jazz Blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(bad_preset).error != ProtocolError::invalid_preset) return 32;
+
+    constexpr std::string_view low_tempo =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":19,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    constexpr std::string_view high_tempo =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":301,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(low_tempo).error != ProtocolError::invalid_tempo) return 33;
+    if (parse_preset_v1(high_tempo).error != ProtocolError::invalid_tempo) return 34;
+
+    constexpr std::string_view high_feedback =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":951,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(high_feedback).error != ProtocolError::invalid_feedback) return 35;
+
+    constexpr std::string_view low_free =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":0,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    constexpr std::string_view high_free =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":2001,"delay.mix_milli":500,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(low_free).error != ProtocolError::invalid_free_ms) return 36;
+    if (parse_preset_v1(high_free).error != ProtocolError::invalid_free_ms) return 37;
+
+    constexpr std::string_view high_mix =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":1001,"delay.subdivision":"dotted-eighth"}})";
+    if (parse_preset_v1(high_mix).error != ProtocolError::invalid_mix) return 38;
+
+    constexpr std::string_view bad_subdivision =
+        R"({"schema":"guitar-dsp.preset","version":1,"preset":"jazz-blues","tempo_bpm":92,"parameters":{"delay.feedback_milli":320,"delay.free_ms":375,"delay.mix_milli":500,"delay.subdivision":"triplet"}})";
+    if (parse_preset_v1(bad_subdivision).error != ProtocolError::invalid_subdivision) return 39;
+
+    if (parse_preset_v1(expected.substr(0, expected.size() - 1U)).error !=
+        ProtocolError::non_canonical) return 40;
+
+    allocations.store(0, std::memory_order_relaxed);
+    tracking.store(true, std::memory_order_release);
+    for (std::size_t i = 0; i < 10000; ++i) {
+        const auto result = parse_preset_v1(expected);
+        if (result.error != ProtocolError::none ||
+            result.value.tempo_bpm != 92U) return 41;
+    }
+    tracking.store(false, std::memory_order_release);
+    if (allocations.load(std::memory_order_relaxed) != 0U) return 42;
+
     return 0;
 }
