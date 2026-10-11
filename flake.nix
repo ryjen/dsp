@@ -108,6 +108,200 @@
             touch "$out"
           '';
 
+          juce-boundary =
+            pkgs.runCommand "dsp-juce-boundary-check"
+              { nativeBuildInputs = [ pkgs.bash pkgs.gnugrep ]; }
+              ''
+                cd ${self}
+                bash ./tools/check-juce-boundary.sh
+                touch "$out"
+              '';
+
+          juce-host = pkgs.stdenv.mkDerivation {
+            pname = "dsp-juce-host-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+              pkgs.pkg-config
+            ];
+            buildInputs = [ pkgs.juce ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DDSP_ENABLE_JUCE_HOST=ON
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build --target dsp_juce_host_test
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build \
+                -R '^dsp_juce_host_test              {
+                nativeBuildInputs = [
+                  pkgs.faust
+                  pkgs.diffutils
+                  pkgs.which
+                ];
+              }
+              ''
+                cp -R ${self} source
+                chmod -R +w source
+                cd source
+                sh ./tools/generate-faust.sh "$TMPDIR/tremolo_faust.hpp"
+                diff -u effects/tremolo/generated/tremolo_faust.hpp "$TMPDIR/tremolo_faust.hpp"
+                touch "$out"
+              '';
+        }
+        // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          daisy-firmware = pkgs.stdenv.mkDerivation {
+            pname = "dsp-daisy-firmware-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+              armToolchain
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S targets/daisy -B build-daisy -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_MAKE_PROGRAM=${pkgs.ninja}/bin/ninja \
+                -DDAISY_ARM_GCC=${armToolchain}/bin/arm-none-eabi-gcc \
+                -DLIBDAISY_DIR=${libdaisy} \
+                -DCMAKE_TOOLCHAIN_FILE=${self}/cmake/toolchains/daisy-arm-none-eabi.cmake
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build-daisy --target hothouse_delay
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ${armToolchain}/bin/arm-none-eabi-size build-daisy/hothouse_delay.elf
+              ${armToolchain}/bin/arm-none-eabi-readelf -h build-daisy/hothouse_delay.elf > elf-header.txt
+              grep -q 'Machine:.*ARM' elf-header.txt
+              test -s build-daisy/hothouse_delay.bin
+              grep -q 'sample_rate_hz = 48000.0' targets/daisy/firmware/hothouse_config.hpp
+              grep -q 'block_size = 48' targets/daisy/firmware/hothouse_config.hpp
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              cp build-daisy/hothouse_delay.elf "$out/"
+              cp build-daisy/hothouse_delay.bin "$out/"
+              runHook postInstall
+            '';
+          };
+
+          sanitizers = pkgs.clangStdenv.mkDerivation {
+            pname = "dsp-sanitizer-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+            ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/sanitizer-check-passed"
+              runHook postInstall
+            '';
+          };
+        }
+      );
+
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.clang
+              pkgs.clang-tools
+              pkgs.cmake
+              pkgs.coreutils
+              pkgs.git
+              pkgs.ninja
+              pkgs.faust
+            ];
+          };
+
+          juce = pkgs.mkShell {
+            packages = [
+              pkgs.clang
+              pkgs.clang-tools
+              pkgs.cmake
+              pkgs.coreutils
+              pkgs.git
+              pkgs.ninja
+              pkgs.pkg-config
+              pkgs.faust
+              pkgs.juce
+            ];
+          };
+        }
+      );
+
+      formatter = forAllSystems (system: (import nixpkgs { inherit system; }).nixfmt);
+    };
+}
+ \
+                --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/juce-host-check-passed"
+              runHook postInstall
+            '';
+          };
+
           faust-generated =
             pkgs.runCommand "dsp-faust-generated-check"
               {
