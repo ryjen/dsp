@@ -154,6 +154,18 @@
               runHook postBuild
             '';
 
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ${armToolchain}/bin/arm-none-eabi-size build-daisy/hothouse_delay.elf
+              ${armToolchain}/bin/arm-none-eabi-readelf -h build-daisy/hothouse_delay.elf > elf-header.txt
+              grep -q 'Machine:.*ARM' elf-header.txt
+              test -s build-daisy/hothouse_delay.bin
+              grep -q 'sample_rate_hz = 48000.0' targets/daisy/firmware/hothouse_config.hpp
+              grep -q 'block_size = 48' targets/daisy/firmware/hothouse_config.hpp
+              runHook postCheck
+            '';
+
             installPhase = ''
               runHook preInstall
               mkdir -p "$out"
