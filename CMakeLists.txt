@@ -213,6 +213,7 @@ add_test(NAME dsp_delay_preset_binding_test COMMAND dsp_delay_preset_binding_tes
 
 
 if(DSP_ENABLE_JUCE_HOST)
+    enable_language(C)
     find_package(JUCE CONFIG REQUIRED)
 
     add_library(dsp_juce_host STATIC
