@@ -12,7 +12,7 @@ constexpr std::string_view version_open = R"(,"version":)";
 constexpr std::string_view preset_open = R"(,"preset":")";
 constexpr std::string_view schema_prefix =
     R"({"schema":"guitar-dsp.preset","version":1,"preset":")";
-constexpr std::string_view tempo_prefix = R"(","tempo_bpm":)";
+constexpr std::string_view tempo_prefix = R"(,"tempo_bpm":)";
 constexpr std::string_view parsed_tempo_prefix = R"(,"tempo_bpm":)";
 constexpr std::string_view parameters_prefix =
     R"(,"parameters":{"delay.feedback_milli":)";
@@ -60,7 +60,7 @@ std::string_view subdivision_name(PresetSubdivisionV1 value) noexcept {
     return {};
 }
 
-ProtocolError validate(const DelayPresetV1& preset) noexcept {
+ProtocolError validate_impl(const DelayPresetV1& preset) noexcept {
     if (!valid_preset_name(preset.preset_name())) {
         return ProtocolError::invalid_preset;
     }
@@ -176,10 +176,15 @@ ProtocolError set_preset_name(
     return ProtocolError::none;
 }
 
+ProtocolError validate_preset_v1(
+    const DelayPresetV1& preset) noexcept {
+    return validate_impl(preset);
+}
+
 SerializeResult serialize_preset_v1(
     const DelayPresetV1& preset,
     std::span<char> output) noexcept {
-    const ProtocolError error = validate(preset);
+    const ProtocolError error = validate_preset_v1(preset);
     if (error != ProtocolError::none) return {error, 0U};
 
     Writer writer{output};
