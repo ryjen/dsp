@@ -108,6 +108,54 @@
             touch "$out"
           '';
 
+          juce-boundary =
+            pkgs.runCommand "dsp-juce-boundary-check"
+              { nativeBuildInputs = [ pkgs.bash pkgs.gnugrep ]; }
+              ''
+                cd ${self}
+                bash ./tools/check-juce-boundary.sh
+                touch "$out"
+              '';
+
+          juce-host = pkgs.stdenv.mkDerivation {
+            pname = "dsp-juce-host-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [
+              pkgs.cmake
+              pkgs.ninja
+              pkgs.pkg-config
+            ];
+            buildInputs = [ pkgs.juce ];
+
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DDSP_ENABLE_JUCE_HOST=ON
+              runHook postConfigure
+            '';
+
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build --target dsp_juce_host_test
+              runHook postBuild
+            '';
+
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build -R dsp_juce_host_test --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/juce-host-check-passed"
+              runHook postInstall
+            '';
+          };
           faust-generated =
             pkgs.runCommand "dsp-faust-generated-check"
               {
@@ -231,6 +279,20 @@
               pkgs.git
               pkgs.ninja
               pkgs.faust
+            ];
+          };
+
+          juce = pkgs.mkShell {
+            packages = [
+              pkgs.clang
+              pkgs.clang-tools
+              pkgs.cmake
+              pkgs.coreutils
+              pkgs.git
+              pkgs.ninja
+              pkgs.pkg-config
+              pkgs.faust
+              pkgs.juce
             ];
           };
         }

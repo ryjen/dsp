@@ -80,6 +80,28 @@ claim note identity, musical correctness, mastery, or a recommended practice act
 Queue overflow is explicit and never blocks the audio callback. See
 `docs/adr/0006-bounded-performance-observations.md`.
 
+## Optional JUCE host
+
+JUCE is supported only as an opt-in desktop host adapter. Ordinary builds and the
+native correctness path do not require JUCE.
+
+`hosts/juce/ProcessorAudioSource` decorates a JUCE `AudioSource` and passes its
+prepared audio buffer through the existing `Processor` contract. The evaluation
+runs `TremoloProcessor` unchanged behind that adapter.
+
+Use the pinned optional environment and build switch:
+
+```sh
+nix develop .#juce
+cmake -S . -B build-juce -G Ninja -DDSP_ENABLE_JUCE_HOST=ON
+cmake --build build-juce --target dsp_juce_host_test
+ctest --test-dir build-juce -R dsp_juce_host_test --output-on-failure
+```
+
+No JUCE-linked release binary is produced. See
+`docs/adr/0007-optional-juce-host.md` for the architecture and licensing
+disposition.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
