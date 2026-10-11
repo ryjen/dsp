@@ -4,6 +4,12 @@ project(dsp LANGUAGES CXX)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(
+    DSP_ENABLE_JUCE_HOST
+    "Build the optional JUCE desktop/audio-source host adapter"
+    OFF
+)
+
 add_library(dsp_core INTERFACE)
 target_include_directories(dsp_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/core/include)
 target_compile_features(dsp_core INTERFACE cxx_std_20)
@@ -204,3 +210,38 @@ target_link_libraries(dsp_delay_preset_binding PUBLIC dsp_guitar_dsp_protocol ds
 add_executable(dsp_delay_preset_binding_test test/protocols/delay_preset_binding_test.cpp)
 target_link_libraries(dsp_delay_preset_binding_test PRIVATE dsp_delay_preset_binding)
 add_test(NAME dsp_delay_preset_binding_test COMMAND dsp_delay_preset_binding_test)
+
+
+if(DSP_ENABLE_JUCE_HOST)
+    find_package(JUCE CONFIG REQUIRED)
+
+    add_library(dsp_juce_host STATIC
+        hosts/juce/src/processor_audio_source.cpp
+    )
+    target_include_directories(
+        dsp_juce_host
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hosts/juce/include
+    )
+    target_link_libraries(
+        dsp_juce_host
+        PUBLIC dsp_core juce::juce_audio_basics
+    )
+    target_compile_definitions(
+        dsp_juce_host
+        PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0
+    )
+
+    add_executable(
+        dsp_juce_host_test
+        test/hosts/juce/processor_audio_source_test.cpp
+    )
+    target_link_libraries(
+        dsp_juce_host_test
+        PRIVATE dsp_juce_host dsp_tremolo
+    )
+    add_test(NAME dsp_juce_host_test COMMAND dsp_juce_host_test)
+    target_compile_options(
+        dsp_juce_host_test
+        PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>
+    )
+endif()
