@@ -11,6 +11,7 @@
 #include <dsp/targets/daisy/delay_control_binding.hpp>
 #include <dsp/targets/daisy/midi_adapter.hpp>
 #include <dsp/targets/daisy/pedal_runtime.hpp>
+#include <dsp/targets/daisy/realtime_midi_inbox.hpp>
 #include <dsp/targets/daisy/tempo_controller.hpp>
 
 #include <cstddef>
@@ -25,6 +26,7 @@ using dsp::targets::daisy::ControlMapper;
 using dsp::targets::daisy::DelayControlBinding;
 using dsp::targets::daisy::MidiAdapter;
 using dsp::targets::daisy::PedalRuntime;
+using dsp::targets::daisy::RealtimeMidiInbox;
 using dsp::targets::daisy::TempoController;
 using dsp::targets::daisy::firmware::DaisyMonotonicClock;
 using dsp::targets::daisy::firmware::HothouseHardware;
@@ -69,7 +71,10 @@ public:
             static_cast<int>(target::block_size));
 
         hardware_.start_adc();
-        midi_.StartReceive();
+        midi_.StartReceiveRt(
+            [this](::daisy::MidiEvent& event) {
+                queue_realtime_midi(event);
+            });
         return true;
     }
 
@@ -87,6 +92,15 @@ public:
     }
 
     void run_control_iteration() noexcept {
+        midi_.Listen();
+        while (const auto realtime = realtime_midi_.pop()) {
+            const auto control =
+                midi_adapter_.translate(
+                    realtime->message,
+                    realtime->timestamp);
+            if (control) handle_control(*control);
+        }
+
         const auto now = clock_.now();
 
         mapper_.update_pot1(hardware_.pot1());
@@ -95,7 +109,6 @@ public:
         mapper_.update_footswitch1(hardware_.footswitch1_pressed(), now);
         mapper_.update_footswitch2(hardware_.footswitch2_pressed(), now);
 
-        midi_.Listen();
         while (midi_.HasEvents()) {
             const auto message =
                 LibDaisyMidiBridge::translate(midi_.PopEvent());
@@ -116,6 +129,12 @@ public:
     }
 
 private:
+    void queue_realtime_midi(::daisy::MidiEvent& event) noexcept {
+        const MidiMessage message = LibDaisyMidiBridge::translate(event);
+        if (!message.valid) return;
+        static_cast<void>(realtime_midi_.push(message, clock_.now()));
+    }
+
     void handle_control(
         const dsp::targets::daisy::ControlEvent& event) noexcept {
         switch (event.kind) {
@@ -151,6 +170,7 @@ private:
     PedalControlState control_state_;
     TempoController tempo_;
     MidiAdapter midi_adapter_;
+    RealtimeMidiInbox realtime_midi_;
     ControlMapper mapper_;
     DelayProcessor delay_;
     PedalRuntime runtime_;
