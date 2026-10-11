@@ -139,9 +139,22 @@ int main() {
     wrap_mapper.update_toggle1(1U, debounce_end);
     if (wrap_mapper.snapshot().mode != PedalMode::quarter) return 21;
 
+    PedalControlState takeover_state;
+    TempoController takeover_tempo;
+    ControlMapper takeover{takeover_state, takeover_tempo};
+    takeover.update_pot1(0.40F);
+    takeover.apply_midi_control(20U, 0.80F);
+    if (!near(takeover.snapshot().primary_normalized, 0.80F)) return 22;
+    takeover.update_pot1(0.40F);
+    if (!near(takeover.snapshot().primary_normalized, 0.80F)) return 23;
+    takeover.update_pot1(0.401F);
+    if (!near(takeover.snapshot().primary_normalized, 0.80F)) return 24;
+    takeover.update_pot1(0.403F);
+    if (!near(takeover.snapshot().primary_normalized, 0.403F)) return 25;
+
     DelayControlBinding::apply(delay, {0.5F, 0.25F, 100.0F, PedalMode::quarter, false, true});
-    if (delay.subdivision() != DelaySubdivision::quarter) return 22;
-    if (!near(delay.tempo_bpm(), 100.0F)) return 23;
+    if (delay.subdivision() != DelaySubdivision::quarter) return 26;
+    if (!near(delay.tempo_bpm(), 100.0F)) return 27;
 
     allocations.store(0, std::memory_order_relaxed);
     tracking.store(true, std::memory_order_release);
@@ -153,7 +166,7 @@ int main() {
         mapper.apply_midi_control(21, 1.0F - value);
     }
     tracking.store(false, std::memory_order_release);
-    if (allocations.load(std::memory_order_relaxed) != 0U) return 24;
+    if (allocations.load(std::memory_order_relaxed) != 0U) return 28;
 
     return 0;
 }
