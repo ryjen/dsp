@@ -130,9 +130,18 @@ int main() {
     taps.update_footswitch2(true, 2120000);
     if (!near(taps.snapshot().tempo_bpm, 109.0909F, 0.1F)) return 20;
 
+    PedalControlState wrap_state;
+    TempoController wrap_tempo;
+    ControlMapper wrap_mapper{wrap_state, wrap_tempo};
+    constexpr std::uint32_t debounce_start = std::numeric_limits<std::uint32_t>::max() - 10000U;
+    constexpr std::uint32_t debounce_end = debounce_start + 20000U;
+    wrap_mapper.update_toggle1(1U, debounce_start);
+    wrap_mapper.update_toggle1(1U, debounce_end);
+    if (wrap_mapper.snapshot().mode != PedalMode::quarter) return 21;
+
     DelayControlBinding::apply(delay, {0.5F, 0.25F, 100.0F, PedalMode::quarter, false, true});
-    if (delay.subdivision() != DelaySubdivision::quarter) return 21;
-    if (!near(delay.tempo_bpm(), 100.0F)) return 22;
+    if (delay.subdivision() != DelaySubdivision::quarter) return 22;
+    if (!near(delay.tempo_bpm(), 100.0F)) return 23;
 
     allocations.store(0, std::memory_order_relaxed);
     tracking.store(true, std::memory_order_release);
@@ -144,7 +153,7 @@ int main() {
         mapper.apply_midi_control(21, 1.0F - value);
     }
     tracking.store(false, std::memory_order_release);
-    if (allocations.load(std::memory_order_relaxed) != 0U) return 23;
+    if (allocations.load(std::memory_order_relaxed) != 0U) return 24;
 
     return 0;
 }

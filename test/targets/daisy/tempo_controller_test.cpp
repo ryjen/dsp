@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <new>
+#include <limits>
 
 namespace {
 std::atomic<bool> tracking{false};
@@ -99,6 +100,15 @@ int main() {
     priority.on_tap(2600000);
     if (!near(priority.tempo_bpm(), 100.0F)) return 17;
 
+    TempoController wrapped;
+    wrapped.on_midi_start(0);
+    constexpr std::uint32_t wrap_first = std::numeric_limits<std::uint32_t>::max() - 10000U;
+    constexpr std::uint32_t wrap_second = wrap_first + static_cast<std::uint32_t>(interval_120);
+    wrapped.on_midi_clock(wrap_first);
+    wrapped.on_midi_clock(wrap_second);
+    if (!wrapped.midi_authoritative()) return 18;
+    if (!near(wrapped.tempo_bpm(), 120.0F)) return 19;
+
     TempoController bounded;
     allocations.store(0, std::memory_order_relaxed);
     tracking.store(true, std::memory_order_release);
@@ -110,7 +120,7 @@ int main() {
         bounded.update_timeout(now);
     }
     tracking.store(false, std::memory_order_release);
-    if (allocations.load(std::memory_order_relaxed) != 0U) return 18;
+    if (allocations.load(std::memory_order_relaxed) != 0U) return 20;
 
     return 0;
 }
