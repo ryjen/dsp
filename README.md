@@ -56,18 +56,6 @@ The first firmware target is configured for 48 kHz / 48-frame stereo audio. Its 
 
 Cross-compilation is software evidence only. Issue #6 remains open until a real Hothouse/Daisy board records flash/boot, control behavior, USB MIDI behavior, actual sample/block configuration, callback/CPU headroom, bypass behavior, and denormal-decay evidence. See `targets/daisy/HARDWARE-VALIDATION.md`.
 
-## Guitar control-plane preset protocol
-
-`protocols/` contains the independent DSP consumer for the frozen
-`guitar-dsp.preset` v1 contract. The parser accepts only canonical bounded wire bytes
-and allocates no memory during parse/serialization. A separate binding validates the
-complete preset before applying normalized values to `DelayProcessor`; the opaque
-preset name never selects hidden firmware state.
-
-`ryjen/guitar-practice-system` owns authoring and human-JSON canonicalization.
-Neither repository imports the other's source tree. See
-`docs/adr/0005-guitar-dsp-preset-v1.md`.
-
 ## guitarctl preset protocol
 
 Issue #7 defines the first versioned control-plane contract between `guitarctl` and the realtime DSP layer: `guitar-dsp.preset` v1.
@@ -101,4 +89,4 @@ Or run the pinned repository gate:
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-Issue #6 has a software-complete Daisy/Hothouse prototype under review; real hardware validation remains the acceptance blocker. Issue #7 defines the independent bounded guitar-control-plane preset protocol and remains separate from physical transport/hardware validation.
+Issue #6 has a merged software-complete Daisy/Hothouse prototype; real hardware validation remains its acceptance blocker. Issue #7 defines the independent bounded guitar-control-plane preset protocol and remains separate from physical transport/hardware validation.
