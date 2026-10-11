@@ -27,6 +27,7 @@ private:
     [[nodiscard]] MonotonicMicros clock_timeout() const noexcept;
     void publish_midi_estimate() noexcept;
     void publish_tap_estimate() noexcept;
+    void reset_midi_observation() noexcept;
 
     std::array<MonotonicMicros, max_midi_intervals> midi_intervals_{};
     std::size_t midi_interval_count_{0};

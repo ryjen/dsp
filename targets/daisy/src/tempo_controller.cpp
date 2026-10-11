@@ -32,7 +32,14 @@ float clamp_bpm(double bpm) noexcept {
 
 void TempoController::on_midi_start(MonotonicMicros now) noexcept {
     midi_running_ = true;
-    midi_authoritative_ = has_midi_estimate_ && clock_is_fresh(now);
+    if (has_midi_estimate_ && clock_is_fresh(now)) {
+        midi_authoritative_ = true;
+        return;
+    }
+    if (has_last_clock_) {
+        reset_midi_observation();
+    }
+    midi_authoritative_ = false;
 }
 
 void TempoController::on_midi_continue(MonotonicMicros now) noexcept {
@@ -101,6 +108,7 @@ void TempoController::update_timeout(MonotonicMicros now) noexcept {
     const MonotonicMicros elapsed = elapsed_micros(now, last_clock_);
     if (!valid_forward_elapsed(elapsed) || elapsed > clock_timeout()) {
         midi_authoritative_ = false;
+        reset_midi_observation();
     }
 }
 
@@ -142,6 +150,14 @@ void TempoController::publish_tap_estimate() noexcept {
         average_prefix(tap_intervals_, tap_interval_count_);
     if (average <= 0.0) return;
     tempo_bpm_ = clamp_bpm(micros_per_minute / average);
+}
+
+void TempoController::reset_midi_observation() noexcept {
+    midi_interval_count_ = 0U;
+    midi_interval_index_ = 0U;
+    last_clock_ = 0U;
+    has_last_clock_ = false;
+    has_midi_estimate_ = false;
 }
 
 }  // namespace dsp::targets::daisy
