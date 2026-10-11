@@ -109,6 +109,21 @@ int main() {
     if (!wrapped.midi_authoritative()) return 18;
     if (!near(wrapped.tempo_bpm(), 120.0F)) return 19;
 
+    TempoController dropout;
+    dropout.on_midi_start(0U);
+    constexpr MonotonicMicros dropout_first = 2000000U;
+    dropout.on_midi_clock(dropout_first);
+    dropout.on_midi_clock(dropout_first + interval_120);
+    if (!dropout.midi_authoritative()) return 20;
+    const MonotonicMicros dropout_last = dropout_first + interval_120;
+    dropout.update_timeout(dropout_last + 250001U);
+    if (dropout.midi_authoritative()) return 21;
+    dropout.on_midi_clock(dropout_last + 500000U);
+    if (dropout.midi_authoritative()) return 22;
+    dropout.on_midi_clock(dropout_last + 500000U + interval_120);
+    if (!dropout.midi_authoritative()) return 23;
+    if (!near(dropout.tempo_bpm(), 120.0F)) return 24;
+
     TempoController bounded;
     allocations.store(0, std::memory_order_relaxed);
     tracking.store(true, std::memory_order_release);
@@ -120,7 +135,7 @@ int main() {
         bounded.update_timeout(now);
     }
     tracking.store(false, std::memory_order_release);
-    if (allocations.load(std::memory_order_relaxed) != 0U) return 20;
+    if (allocations.load(std::memory_order_relaxed) != 0U) return 25;
 
     return 0;
 }
