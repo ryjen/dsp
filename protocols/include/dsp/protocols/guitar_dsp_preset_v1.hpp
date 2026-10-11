@@ -54,6 +54,15 @@ struct SerializeResult {
     }
 };
 
+struct ParseResult {
+    ProtocolError error{ProtocolError::none};
+    DelayPresetV1 value{};
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == ProtocolError::none;
+    }
+};
+
 [[nodiscard]] ProtocolError set_preset_name(
     DelayPresetV1& preset,
     std::string_view name) noexcept;
@@ -61,5 +70,7 @@ struct SerializeResult {
 [[nodiscard]] SerializeResult serialize_preset_v1(
     const DelayPresetV1& preset,
     std::span<char> output) noexcept;
+
+[[nodiscard]] ParseResult parse_preset_v1(std::string_view input) noexcept;
 
 }  // namespace dsp::protocols

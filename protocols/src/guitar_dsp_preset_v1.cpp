@@ -7,6 +7,9 @@
 namespace dsp::protocols {
 namespace {
 
+constexpr std::string_view schema_open = R"({"schema":")";
+constexpr std::string_view version_open = R"(","version":)";
+constexpr std::string_view preset_open = R"(,"preset":")";
 constexpr std::string_view schema_prefix =
     R"({"schema":"guitar-dsp.preset","version":1,"preset":")";
 constexpr std::string_view tempo_prefix = R"(","tempo_bpm":)";
@@ -78,6 +81,59 @@ ProtocolError validate(const DelayPresetV1& preset) noexcept {
     return ProtocolError::none;
 }
 
+class Cursor {
+public:
+    explicit Cursor(std::string_view input) noexcept : input_{input} {}
+
+    bool consume(std::string_view literal) noexcept {
+        if (literal.size() > input_.size() - position_) return false;
+        if (input_.substr(position_, literal.size()) != literal) return false;
+        position_ += literal.size();
+        return true;
+    }
+
+    bool quoted(std::string_view& value) noexcept {
+        const std::size_t start = position_;
+        while (position_ < input_.size()) {
+            const char current = input_[position_];
+            if (current == '"') {
+                value = input_.substr(start, position_ - start);
+                ++position_;
+                return true;
+            }
+            if (current == '\\' ||
+                static_cast<unsigned char>(current) < 0x20U) {
+                return false;
+            }
+            ++position_;
+        }
+        return false;
+    }
+
+    bool unsigned_integer(std::uint32_t& value) noexcept {
+        const std::size_t start = position_;
+        while (position_ < input_.size() &&
+               input_[position_] >= '0' &&
+               input_[position_] <= '9') {
+            ++position_;
+        }
+        if (position_ == start) return false;
+        const auto digits = input_.substr(start, position_ - start);
+        const auto result =
+            std::from_chars(digits.data(), digits.data() + digits.size(), value);
+        return result.ec == std::errc{} &&
+               result.ptr == digits.data() + digits.size();
+    }
+
+    [[nodiscard]] bool at_end() const noexcept {
+        return position_ == input_.size();
+    }
+
+private:
+    std::string_view input_;
+    std::size_t position_{};
+};
+
 class Writer {
 public:
     explicit Writer(std::span<char> output) noexcept : output_{output} {}
@@ -144,6 +200,99 @@ SerializeResult serialize_preset_v1(
 
     if (!complete) return {ProtocolError::too_large, 0U};
     return {ProtocolError::none, writer.size()};
+}
+
+ParseResult parse_preset_v1(std::string_view input) noexcept {
+    if (input.size() > 256U) return {ProtocolError::too_large, {}};
+
+    Cursor cursor{input};
+    std::string_view token;
+    std::uint32_t integer{};
+
+    if (!cursor.consume(schema_open) || !cursor.quoted(token)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (token != "guitar-dsp.preset") {
+        return {ProtocolError::wrong_schema, {}};
+    }
+
+    if (!cursor.consume(version_open) || !cursor.unsigned_integer(integer)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (integer != 1U) {
+        return {ProtocolError::unsupported_version, {}};
+    }
+
+    DelayPresetV1 preset;
+    if (!cursor.consume(preset_open) || !cursor.quoted(token)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (const auto error = set_preset_name(preset, token);
+        error != ProtocolError::none) {
+        return {error, {}};
+    }
+
+    if (!cursor.consume(tempo_prefix) || !cursor.unsigned_integer(integer)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (integer < 20U || integer > 300U) {
+        return {ProtocolError::invalid_tempo, {}};
+    }
+    preset.tempo_bpm = static_cast<std::uint16_t>(integer);
+
+    if (!cursor.consume(parameters_prefix) ||
+        !cursor.unsigned_integer(integer)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (integer > 950U) {
+        return {ProtocolError::invalid_feedback, {}};
+    }
+    preset.feedback_milli = static_cast<std::uint16_t>(integer);
+
+    if (!cursor.consume(free_prefix) || !cursor.unsigned_integer(integer)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (integer < 1U || integer > 2000U) {
+        return {ProtocolError::invalid_free_ms, {}};
+    }
+    preset.free_ms = static_cast<std::uint16_t>(integer);
+
+    if (!cursor.consume(mix_prefix) || !cursor.unsigned_integer(integer)) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    if (integer > 1000U) {
+        return {ProtocolError::invalid_mix, {}};
+    }
+    preset.mix_milli = static_cast<std::uint16_t>(integer);
+
+    if (!cursor.consume(subdivision_prefix) || !cursor.quoted(token) ||
+        !cursor.consume("}}") || !cursor.at_end()) {
+        return {ProtocolError::non_canonical, {}};
+    }
+
+    if (token == "free") {
+        preset.subdivision = PresetSubdivisionV1::free;
+    } else if (token == "quarter") {
+        preset.subdivision = PresetSubdivisionV1::quarter;
+    } else if (token == "dotted-eighth") {
+        preset.subdivision = PresetSubdivisionV1::dotted_eighth;
+    } else if (token == "eighth") {
+        preset.subdivision = PresetSubdivisionV1::eighth;
+    } else if (token == "eighth-triplet") {
+        preset.subdivision = PresetSubdivisionV1::eighth_triplet;
+    } else if (token == "sixteenth") {
+        preset.subdivision = PresetSubdivisionV1::sixteenth;
+    } else {
+        return {ProtocolError::invalid_subdivision, {}};
+    }
+
+    std::array<char, 256> canonical{};
+    const auto encoded = serialize_preset_v1(preset, canonical);
+    if (!encoded ||
+        std::string_view{canonical.data(), encoded.size} != input) {
+        return {ProtocolError::non_canonical, {}};
+    }
+    return {ProtocolError::none, preset};
 }
 
 }  // namespace dsp::protocols
