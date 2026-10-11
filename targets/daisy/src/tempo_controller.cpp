@@ -50,9 +50,8 @@ void TempoController::on_midi_clock(MonotonicMicros now) noexcept {
         has_last_clock_ = true;
         return;
     }
-    if (now <= last_clock_) return;
-
-    const MonotonicMicros interval = now - last_clock_;
+    const MonotonicMicros interval = elapsed_micros(now, last_clock_);
+    if (!valid_forward_elapsed(interval)) return;
     last_clock_ = now;
 
     midi_intervals_[midi_interval_index_] = interval;
@@ -76,9 +75,8 @@ void TempoController::on_tap(MonotonicMicros now) noexcept {
         has_last_tap_ = true;
         return;
     }
-    if (now <= last_tap_) return;
-
-    const MonotonicMicros interval = now - last_tap_;
+    const MonotonicMicros interval = elapsed_micros(now, last_tap_);
+    if (!valid_forward_elapsed(interval)) return;
     if (interval < minimum_tap_interval) {
         return;
     }
@@ -100,8 +98,8 @@ void TempoController::on_tap(MonotonicMicros now) noexcept {
 
 void TempoController::update_timeout(MonotonicMicros now) noexcept {
     if (!midi_authoritative_ || !midi_running_ || !has_last_clock_) return;
-    if (now <= last_clock_) return;
-    if (now - last_clock_ > clock_timeout()) {
+    const MonotonicMicros elapsed = elapsed_micros(now, last_clock_);
+    if (!valid_forward_elapsed(elapsed) || elapsed > clock_timeout()) {
         midi_authoritative_ = false;
     }
 }
@@ -115,8 +113,10 @@ bool TempoController::midi_authoritative() const noexcept {
 }
 
 bool TempoController::clock_is_fresh(MonotonicMicros now) const noexcept {
-    if (!has_last_clock_ || now < last_clock_) return false;
-    return now - last_clock_ <= clock_timeout();
+    if (!has_last_clock_) return false;
+    const MonotonicMicros elapsed = elapsed_micros(now, last_clock_);
+    return elapsed == 0U ||
+           (valid_forward_elapsed(elapsed) && elapsed <= clock_timeout());
 }
 
 MonotonicMicros TempoController::clock_timeout() const noexcept {

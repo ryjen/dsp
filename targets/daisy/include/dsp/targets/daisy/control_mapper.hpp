@@ -42,7 +42,10 @@ private:
                 pending = true;
                 return false;
             }
-            if (now < candidate_since || now - candidate_since < debounce_micros) {
+            const MonotonicMicros elapsed =
+                elapsed_micros(now, candidate_since);
+            if (!valid_forward_elapsed(elapsed) ||
+                elapsed < debounce_micros) {
                 return false;
             }
             stable = candidate;
