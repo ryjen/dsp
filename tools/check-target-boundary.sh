@@ -6,8 +6,8 @@ cd "$root"
 
 pattern='#include[[:space:]]*[<"][^">]*(daisy|hothouse)|\b(daisy::|MidiEvent|MidiMessageType|MidiUsbHandler|MidiUartHandler)\b'
 
-if grep -RniE "$pattern" core effects --include='*.hpp' --include='*.h' --include='*.cpp' --include='*.cc'; then
-  echo "target-specific Daisy/MIDI packet dependency leaked into core/effects" >&2
+if grep -RniE "$pattern" core effects analysis --include='*.hpp' --include='*.h' --include='*.cpp' --include='*.cc'; then
+  echo "target-specific Daisy/MIDI packet dependency leaked into core/effects/analysis" >&2
   exit 1
 fi
 
