@@ -65,5 +65,9 @@ int main() {
     const ProcessSpec invalid{};
     if (DelayProcessor::required_storage_samples(invalid)) return 7;
 
+    DelayProcessor recovery;
+    if (recovery.prepare(spec, std::span<float>{too_small})) return 8;
+    if (!recovery.prepare(spec)) return 9;
+
     return 0;
 }
