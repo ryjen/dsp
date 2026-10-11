@@ -145,8 +145,21 @@
             doCheck = true;
             checkPhase = ''
               runHook preCheck
-              ctest --test-dir build \
-                -R '^dsp_juce_host_test              {
+              ctest --test-dir build -R dsp_juce_host_test --output-on-failure
+              runHook postCheck
+            '';
+
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/juce-host-check-passed"
+              runHook postInstall
+            '';
+          };
+
+          faust-generated =
+            pkgs.runCommand "dsp-faust-generated-check"
+              {
                 nativeBuildInputs = [
                   pkgs.faust
                   pkgs.diffutils
