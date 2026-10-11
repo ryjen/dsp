@@ -67,6 +67,9 @@ struct ParseResult {
     DelayPresetV1& preset,
     std::string_view name) noexcept;
 
+[[nodiscard]] ProtocolError validate_preset_v1(
+    const DelayPresetV1& preset) noexcept;
+
 [[nodiscard]] SerializeResult serialize_preset_v1(
     const DelayPresetV1& preset,
     std::span<char> output) noexcept;
