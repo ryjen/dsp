@@ -8,11 +8,11 @@ namespace dsp::protocols {
 namespace {
 
 constexpr std::string_view schema_open = R"({"schema":")";
-constexpr std::string_view version_open = R"(","version":)";
+constexpr std::string_view version_open = R"(,"version":)";
 constexpr std::string_view preset_open = R"(,"preset":")";
 constexpr std::string_view schema_prefix =
     R"({"schema":"guitar-dsp.preset","version":1,"preset":")";
-constexpr std::string_view tempo_prefix = R"(","tempo_bpm":)";
+constexpr std::string_view tempo_prefix = R"(,"tempo_bpm":)";
 constexpr std::string_view parameters_prefix =
     R"(,"parameters":{"delay.feedback_milli":)";
 constexpr std::string_view free_prefix = R"(,"delay.free_ms":)";
