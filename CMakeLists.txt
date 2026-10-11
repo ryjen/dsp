@@ -148,3 +148,8 @@ add_executable(dsp_guitar_dsp_preset_v1_test test/protocols/guitar_dsp_preset_v1
 target_link_libraries(dsp_guitar_dsp_preset_v1_test PRIVATE dsp_guitar_dsp_protocol)
 add_test(NAME dsp_guitar_dsp_preset_v1_test COMMAND dsp_guitar_dsp_preset_v1_test)
 target_compile_options(dsp_guitar_dsp_preset_v1_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_delay_preset_binding_test test/protocols/delay_preset_binding_test.cpp)
+target_link_libraries(dsp_delay_preset_binding_test PRIVATE dsp_guitar_dsp_protocol dsp_delay)
+add_test(NAME dsp_delay_preset_binding_test COMMAND dsp_delay_preset_binding_test)
