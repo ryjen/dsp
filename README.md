@@ -48,6 +48,14 @@ Delay time can be supplied directly in milliseconds or resolved from normalized 
 
 See `docs/adr/0003-native-stateful-delay.md` for the state-ownership, interpolation, and transition decisions.
 
+## Daisy / Hothouse target
+
+Issue #6 adds a thin embedded adapter around the same portable `DelayProcessor` used by native tests. The target composes Hothouse physical controls, USB MIDI, deterministic tempo ownership, prepared bypass scratch, and libDaisy audio buffers without allowing Daisy or MIDI packet types into `core/` or `effects/`.
+
+The first firmware target is configured for 48 kHz / 48-frame stereo audio. Its two-second stereo delay history is supplied as caller-owned SDRAM rather than consuming the Daisy internal SRAM heap. `nix flake check` cross-builds the firmware with a pinned Arm GNU Embedded toolchain and pinned libDaisy source with submodules.
+
+Cross-compilation is software evidence only. Issue #6 remains open until a real Hothouse/Daisy board records flash/boot, control behavior, USB MIDI behavior, actual sample/block configuration, callback/CPU headroom, bypass behavior, and denormal-decay evidence. See `targets/daisy/HARDWARE-VALIDATION.md`.
+
 ## Native evidence harness
 
 `dsp_native` can render deterministic vectors through the same `Processor::process()` boundary future hosts will call. It also provides fixture generation, absolute/relative sample comparison, and callback-budget reporting without requiring audio hardware.
@@ -69,4 +77,4 @@ Or run the pinned repository gate:
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-Issue #6 is the next critical-path slice: prototype the Daisy pedal target and realtime MIDI/control adapter. Issue #14 may proceed alongside it to promote the strict-warning and sanitizer evidence already used during review into the flake-driven CI contract.
+Issue #6 has a software-complete Daisy/Hothouse prototype under review; real hardware validation remains the acceptance blocker. Issue #7 is the next software integration slice once the #6 software PR lands.
