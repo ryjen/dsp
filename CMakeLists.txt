@@ -136,3 +136,9 @@ add_executable(dsp_realtime_midi_inbox_test test/targets/daisy/realtime_midi_inb
 target_link_libraries(dsp_realtime_midi_inbox_test PRIVATE dsp_daisy_control)
 add_test(NAME dsp_realtime_midi_inbox_test COMMAND dsp_realtime_midi_inbox_test)
 target_compile_options(dsp_realtime_midi_inbox_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
+
+
+add_executable(dsp_guitar_dsp_preset_v1_test test/protocols/guitar_dsp_preset_v1_test.cpp)
+target_include_directories(dsp_guitar_dsp_preset_v1_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/protocols/include)
+add_test(NAME dsp_guitar_dsp_preset_v1_test COMMAND dsp_guitar_dsp_preset_v1_test)
+target_compile_options(dsp_guitar_dsp_preset_v1_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
