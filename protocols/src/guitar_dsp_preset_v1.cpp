@@ -12,7 +12,8 @@ constexpr std::string_view version_open = R"(,"version":)";
 constexpr std::string_view preset_open = R"(,"preset":")";
 constexpr std::string_view schema_prefix =
     R"({"schema":"guitar-dsp.preset","version":1,"preset":")";
-constexpr std::string_view tempo_prefix = R"(,"tempo_bpm":)";
+constexpr std::string_view tempo_prefix = R"(","tempo_bpm":)";
+constexpr std::string_view parsed_tempo_prefix = R"(,"tempo_bpm":)";
 constexpr std::string_view parameters_prefix =
     R"(,"parameters":{"delay.feedback_milli":)";
 constexpr std::string_view free_prefix = R"(,"delay.free_ms":)";
@@ -232,7 +233,7 @@ ParseResult parse_preset_v1(std::string_view input) noexcept {
         return {error, {}};
     }
 
-    if (!cursor.consume(tempo_prefix) || !cursor.unsigned_integer(integer)) {
+    if (!cursor.consume(parsed_tempo_prefix) || !cursor.unsigned_integer(integer)) {
         return {ProtocolError::non_canonical, {}};
     }
     if (integer < 20U || integer > 300U) {
