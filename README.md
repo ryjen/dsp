@@ -108,6 +108,20 @@ disposition.
 
 Listening tests are not a correctness gate; deterministic vectors and allocation guards are.
 
+## CI cleanup boundary
+
+Ordinary CI invokes `nix flake check --no-write-lock-file`. Its native
+CMake/CTest builds run inside isolated Nix derivation build directories;
+there is no CI-created worktree `build/`, generated firmware bundle,
+or `result` link to delete. CI cleanup is therefore an **explicit
+no-op**. Do not garbage-collect shared Nix store objects or caches.
+
+Local developer-driven CMake/Ninja builds are separate: a developer may
+remove only the verified `build/` or `build-*/` tree they own,
+after retaining necessary timing, firmware, and test evidence. Do not
+blindly remove generated DSP kernels under `effects/</BT> or output
+owned by another worktree.
+
 ## Build and test
 
 ```sh

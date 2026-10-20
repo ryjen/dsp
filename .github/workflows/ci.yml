@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   native:
+    # cleanup: no-local-outputs — all CMake/ctest builds run inside Nix derivations.
     name: Native bootstrap
     runs-on: ubuntu-latest
     timeout-minutes: 15
