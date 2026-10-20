@@ -119,7 +119,7 @@ no-op**. Do not garbage-collect shared Nix store objects or caches.
 Local developer-driven CMake/Ninja builds are separate: a developer may
 remove only the verified `build/` or `build-*/` tree they own,
 after retaining necessary timing, firmware, and test evidence. Do not
-blindly remove generated DSP kernels under `effects/</BT> or output
+blindly remove generated DSP kernels under `effects/*/generated/` or output
 owned by another worktree.
 
 ## Build and test
