@@ -21,7 +21,7 @@ Run as the `pistomp` user after authorizing dependency installation:
 ```sh
 sudo apt-get update
 sudo apt-get install --no-install-recommends -y \
-    git build-essential cmake ninja-build lv2-dev lilv-utils binutils
+    git build-essential cmake ninja-build lv2-dev lilv-utils binutils util-linux
 git clone https://github.com/ryjen/dsp.git
 cd dsp
 bash targets/pistomp/build-bundles.sh /tmp/micrantha-lv2
