@@ -1,0 +1,65 @@
+cmake_minimum_required(VERSION 3.25)
+if(NOT DEFINED DEMO OR NOT DEFINED CLI OR NOT DEFINED WORK)
+    message(FATAL_ERROR "Missing executable or work directory")
+endif()
+file(REMOVE_RECURSE "${WORK}")
+file(MAKE_DIRECTORY "${WORK}")
+execute_process(COMMAND "${DEMO}" "${WORK}"
+    RESULT_VARIABLE result ERROR_VARIABLE error)
+if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Synthetic input generation failed: ${result} ${error}")
+endif()
+set(input "${WORK}/dry.wav")
+set(output "${WORK}/processed.wav")
+file(WRITE "${WORK}/preset.json"
+    "{\"schema\":\"guitar-dsp.preset\",\"version\":1,\"preset\":\"jazz-blues\",\"tempo_bpm\":92,\"parameters\":{\"delay.feedback_milli\":320,\"delay.free_ms\":375,\"delay.mix_milli\":500,\"delay.subdivision\":\"dotted-eighth\"}}")
+execute_process(COMMAND "${CLI}" render "${input}" --output "${output}"
+    --effects tremolo,delay --preset "${WORK}/preset.json"
+    --tremolo-depth 0.75 --tremolo-rate 3.0
+    RESULT_VARIABLE result ERROR_VARIABLE error)
+if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Preset rendering failed: ${error}")
+endif()
+file(SIZE "${input}" input_size)
+file(SIZE "${output}" output_size)
+if(NOT input_size EQUAL output_size OR output_size LESS 256)
+    message(FATAL_ERROR "Unexpected WAV output size")
+endif()
+file(SHA256 "${input}" original_hash)
+file(SHA256 "${output}" rendered_hash)
+if(original_hash STREQUAL rendered_hash)
+    message(FATAL_ERROR "Expected audio effect to change output")
+endif()
+execute_process(COMMAND "${CLI}" render "${input}" --output "${output}" --effects none
+    RESULT_VARIABLE overwrite_result)
+if(overwrite_result EQUAL 0)
+    message(FATAL_ERROR "Existing output was overwritten")
+endif()
+file(SHA256 "${output}" after_hash)
+if(NOT after_hash STREQUAL rendered_hash)
+    message(FATAL_ERROR "Failed overwrite modified the file")
+endif()
+execute_process(COMMAND "${CLI}" render "${input}" --output "${WORK}/bad.wav"
+    --preset "${WORK}/preset.json" --feedback 0.25
+    RESULT_VARIABLE invalid_result)
+if(invalid_result EQUAL 0 OR EXISTS "${WORK}/bad.wav")
+    message(FATAL_ERROR "Preset override was accepted")
+endif()
+file(WRITE "${WORK}/malformed.wav" "not a WAV")
+execute_process(COMMAND "${CLI}" render "${WORK}/malformed.wav"
+    --output "${WORK}/malformed-out.wav"
+    RESULT_VARIABLE malformed_result)
+if(malformed_result EQUAL 0 OR EXISTS "${WORK}/malformed-out.wav")
+    message(FATAL_ERROR "Malformed WAV was accepted")
+endif()
+execute_process(COMMAND "${CLI}" render "${input}"
+    --effects none --output "${WORK}/copy.wav"
+    RESULT_VARIABLE copy_result)
+if(NOT copy_result EQUAL 0)
+    message(FATAL_ERROR "Dry pass-through failed")
+endif()
+file(SHA256 "${WORK}/copy.wav" drycopy_hash)
+if(NOT drycopy_hash STREQUAL original_hash)
+    message(FATAL_ERROR "Dry PCM16 pass-through differs")
+endif()
+message(STATUS "PCM16 effects, preset, rejection and dry pass-through passed")

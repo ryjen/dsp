@@ -216,6 +216,18 @@ add_executable(dsp_effects_audio_demo examples/audio_demo.cpp)
 target_link_libraries(dsp_effects_audio_demo PRIVATE dsp_native dsp_tremolo dsp_delay)
 add_test(NAME dsp_effects_audio_demo_test
     COMMAND dsp_effects_audio_demo "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
+# Offline execution plane used by guitarctl, with no dependency on its Python code.
+add_executable(dsp_render_cli hosts/native/src/render_cli.cpp)
+set_target_properties(dsp_render_cli PROPERTIES OUTPUT_NAME dsp)
+target_link_libraries(dsp_render_cli PRIVATE
+    dsp_native dsp_delay dsp_tremolo dsp_delay_preset_binding)
+install(TARGETS dsp_render_cli RUNTIME DESTINATION bin)
+add_test(NAME dsp_render_cli_test COMMAND ${CMAKE_COMMAND}
+    "-DDEMO=$<TARGET_FILE:dsp_effects_audio_demo>"
+    "-DCLI=$<TARGET_FILE:dsp_render_cli>"
+    "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/render-cli-smoke"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/test/native/render_cli_smoke.cmake")
+
 
 
 if(DSP_ENABLE_JUCE_HOST)
