@@ -26,3 +26,20 @@ jobs:
 
       - name: Verify committed flake and native checks
         run: nix flake check --no-write-lock-file --print-build-logs
+
+  lv2-aarch64:
+    # Native ARM64 LV2 ABI smoke evidence; not a Debian-target deployable binary.
+    name: ARM64 LV2 host
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          github_access_token: ${{ github.token }}
+      - name: Check architecture-native LV2 bundles
+        run: nix build .#checks.aarch64-linux.lv2-host --no-write-lock-file --print-build-logs
