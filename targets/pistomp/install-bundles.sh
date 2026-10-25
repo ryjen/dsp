@@ -25,12 +25,24 @@ for effect in delay tremolo; do
 done
 mkdir -p -- "$target"
 staging="$(mktemp -d "$target/.micrantha-stage.XXXXXXXX")"
-trap 'rm -rf -- "$staging"' EXIT
+installed=()
+complete=0
+cleanup() {
+  if [[ "$complete" -eq 0 ]]; then
+    for effect in "${installed[@]}"; do
+      rm -rf -- "$target/micrantha-$effect.lv2"
+    done
+  fi
+  rm -rf -- "$staging"
+}
+trap cleanup EXIT
 for effect in delay tremolo; do
   cp -R -- "$source_root/micrantha-$effect.lv2" "$staging/"
 done
 for effect in delay tremolo; do
   mv -- "$staging/micrantha-$effect.lv2" "$target/micrantha-$effect.lv2"
+  installed+=("$effect")
 done
+complete=1
 echo "Installed only micrantha-delay.lv2 and micrantha-tremolo.lv2 into $target"
 echo "Audio services were not restarted. Refresh MOD-UI only when interruption is safe."
