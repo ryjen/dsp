@@ -15,7 +15,14 @@ int main(int argc, char** argv) {
     if (!descriptor) return 3;
     const LV2_Descriptor* d = descriptor(0);
     if (!d || descriptor(1) || std::strcmp(d->URI, argv[2]) != 0) return 4;
-    const LV2_Feature* features[] = {nullptr};
+    // The metadata requires inPlaceBroken. A missing host feature must
+    // fail before allocation; a supporting host must instantiate normally.
+    const LV2_Feature* no_features[] = {nullptr};
+    if (d->instantiate(d, 48000.0, "", no_features)) return 15;
+    const LV2_Feature in_place_broken{
+        "http://lv2plug.in/ns/lv2core#inPlaceBroken", nullptr
+    };
+    const LV2_Feature* features[] = {&in_place_broken, nullptr};
     if (d->instantiate(d, std::numeric_limits<double>::quiet_NaN(), "", features)) return 5;
     LV2_Handle h = d->instantiate(d, 48000.0, "", features);
     if (!h) return 6;
