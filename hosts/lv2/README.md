@@ -18,7 +18,7 @@ The Linux flake check `checks.<system>.lv2-host` performs the host tests plus Li
 
 Audio is stereo: input ports 0/1, output 2/3. Delay controls at 4..8 are time milliseconds, feedback, mix, BPM, subdivision; subdivision rounds to 0=free,1=quarter,2=dotted-eighth,3=eighth,4=eighth-triplet,5=sixteenth. Tremolo controls at 4..6 are rate Hz, depth and shape.
 
-Construction and DSP preparation occur during instantiate; activate applies current controls and resets effect state. Every run() uses bounded 2048-frame chunks with no allocation or I/O. NaN and infinity controls fall back to documented defaults. Outputs must be connected. The plugin declares LV2 inPlaceBroken: a conforming host must not alias audio input to output ports (cross-port aliasing is not supported). The plugin uses no filesystem, network or control-plane code on the callback.
+Construction and DSP preparation occur during instantiate; activate applies current controls and resets effect state. Every run() uses bounded 2048-frame chunks with no allocation or I/O. NaN and infinity controls fall back to documented defaults. Outputs must be connected. The plugin declares LV2 inPlaceBroken as a **required** host feature and rejects instantiation when the host does not advertise support. A conforming host must not alias audio input to output ports (cross-port aliasing is not supported). The plugin uses no filesystem, network or control-plane code on the callback.
 
 ## Deployment boundary
 
