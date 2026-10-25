@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     for (float v : x) if (!std::isfinite(v)) return 9;
     for (float v : y) if (!std::isfinite(v)) return 10;
     if (d->deactivate) d->deactivate(h);
-    c6 = delay ? 0.0F : 1.0F;
+    if (delay) c6 = 0.0F; else c5 = 1.0F; // wet mix vs tremolo depth
     std::fill(a.begin(), a.end(), 1.0F);
     std::fill(b.begin(), b.end(), 0.5F);
     d->activate(h);
