@@ -141,3 +141,13 @@ Issue #6 has a merged software-complete Daisy/Hothouse prototype; real hardware 
 ## Optional LV2 / pi-Stomp host
 
 An opt-in LV2 adapter under `hosts/lv2/` publishes existing delay/tremolo processors as loadable plugins, without introducing LV2 into the core or changing the guitarctl protocol. Build with `DSP_ENABLE_LV2_HOST=ON`; run `nix develop .#lv2` to obtain the host development dependencies. See [LV2 host guide](hosts/lv2/README.md). pi-Stomp hardware validation is #26 and non-blocking Yocto evaluation is #27.
+
+## pi-Stomp ARM64 delivery
+
+The optional LV2 delay and tremolo plugins now have a native ARM64
+build/validation step and a non-overwriting, unprivileged installation
+path for the official pi-Stomp OS. Refer to
+[pi-Stomp integration](targets/pistomp/README.md) before installation.
+ARM64 CI is software evidence only; physical latency/MOD-UI controls remain
+under #26. [ADR 0008](docs/adr/0008-pistomp-os-strategy.md) explains why
+a custom Yocto firmware is not justified now (#27).
