@@ -108,6 +108,14 @@
             touch "$out"
           '';
 
+          pistomp-scripts =
+            pkgs.runCommand "dsp-pistomp-script-syntax-check"
+              { nativeBuildInputs = [ pkgs.bash ]; }
+              ''
+                bash -n ${self}/targets/pistomp/build-bundles.sh
+                bash -n ${self}/targets/pistomp/install-bundles.sh
+                touch "$out"
+              '';
           juce-boundary =
             pkgs.runCommand "dsp-juce-boundary-check"
               { nativeBuildInputs = [ pkgs.bash pkgs.gnugrep ]; }
