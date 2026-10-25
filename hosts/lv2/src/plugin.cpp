@@ -51,8 +51,22 @@ void controls(Instance& p) noexcept {
 #endif
 }
 LV2_Handle instantiate(const LV2_Descriptor*, double rate, const char*,
-                       const LV2_Feature* const*) {
+                       const LV2_Feature* const* features) {
     if (!std::isfinite(rate) || rate < 1.0 || rate > 192000.0) return nullptr;
+
+    // Required by our Turtle metadata: a compliant host must guarantee that
+    // no audio input buffer aliases any audio output buffer.
+    constexpr const char* in_place_broken =
+        "http://lv2plug.in/ns/lv2core#inPlaceBroken";
+    bool supported = false;
+    for (const LV2_Feature* const* it = features; it && *it; ++it) {
+        if ((*it)->URI && std::strcmp((*it)->URI, in_place_broken) == 0) {
+            supported = true;
+            break;
+        }
+    }
+    if (!supported) return nullptr;
+
     try {
         auto p = std::make_unique<Instance>();
         if (!p->effect.prepare({rate, chunk_frames, 2})) return nullptr;
