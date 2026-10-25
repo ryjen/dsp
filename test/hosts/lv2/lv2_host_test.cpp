@@ -1,11 +1,31 @@
 #include <lv2/core/lv2.h>
 #include <algorithm>
+#include <atomic>
+#include <cstdlib>
+#include <new>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <dlfcn.h>
 #include <limits>
 #include <vector>
+
+namespace {
+std::atomic<bool> track_allocations{false};
+std::atomic<std::size_t> allocation_count{0};
+}
+
+void* operator new(std::size_t size) {
+    if (track_allocations.load(std::memory_order_relaxed))
+        allocation_count.fetch_add(1, std::memory_order_relaxed);
+    if (void* value = std::malloc(size)) return value;
+    throw std::bad_alloc{};
+}
+void operator delete(void* p) noexcept { std::free(p); }
+void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+void* operator new[](std::size_t n) { return ::operator new(n); }
+void operator delete[](void* p) noexcept { ::operator delete(p); }
+void operator delete[](void* p, std::size_t) noexcept { ::operator delete(p); }
 
 int main(int argc, char** argv) {
     if (argc != 4) return 1;
@@ -76,6 +96,45 @@ int main(int argc, char** argv) {
     d->run(h, static_cast<uint32_t>(n));
     for (float v : x) if (!std::isfinite(v)) return 13;
     for (float v : y) if (!std::isfinite(v)) return 14;
+    // The wrapper must safely skip a callback with a disconnected output.
+    std::fill(x.begin(), x.end(), 12.0F);
+    d->connect_port(h, 2, nullptr);
+    d->run(h, static_cast<uint32_t>(n));
+    if (x[0] != 12.0F) return 16;
+    d->connect_port(h, 2, x.data());
+
+    // With disconnected inputs and a reset state, both channels must be silent.
+    d->connect_port(h, 0, nullptr);
+    d->connect_port(h, 1, nullptr);
+    d->activate(h);
+    d->run(h, static_cast<uint32_t>(n));
+    for (float v : x) if (v != 0.0F) return 17;
+    for (float v : y) if (v != 0.0F) return 18;
+    d->connect_port(h, 0, a.data());
+    d->connect_port(h, 1, b.data());
+
+    // Crosses chunk boundaries, null/default control path, and DSP changes.
+    d->connect_port(h, 4, nullptr);
+    d->connect_port(h, 5, nullptr);
+    d->activate(h);
+
+    // Check that global new instrumentation works before probing the plugin.
+    allocation_count.store(0, std::memory_order_relaxed);
+    track_allocations.store(true, std::memory_order_release);
+    void* probe = ::operator new(32);
+    ::operator delete(probe);
+    track_allocations.store(false, std::memory_order_release);
+    if (allocation_count.load(std::memory_order_relaxed) != 1) return 19;
+
+    // Linux executable exports operator new for interposition into the
+    // dlopen() plugin. Allocation during run() must not occur.
+    allocation_count.store(0, std::memory_order_relaxed);
+    track_allocations.store(true, std::memory_order_release);
+    for (int i = 0; i < 24; ++i)
+        d->run(h, static_cast<uint32_t>(n));
+    track_allocations.store(false, std::memory_order_release);
+    if (allocation_count.load(std::memory_order_relaxed) != 0) return 20;
+
     if (d->deactivate) d->deactivate(h);
     d->cleanup(h);
     dlclose(module);

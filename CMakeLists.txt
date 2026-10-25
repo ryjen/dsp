@@ -211,6 +211,12 @@ add_executable(dsp_delay_preset_binding_test test/protocols/delay_preset_binding
 target_link_libraries(dsp_delay_preset_binding_test PRIVATE dsp_delay_preset_binding)
 add_test(NAME dsp_delay_preset_binding_test COMMAND dsp_delay_preset_binding_test)
 
+# Deterministic sound demo: synthetic plucked strings -> existing portable effects.
+add_executable(dsp_effects_audio_demo examples/audio_demo.cpp)
+target_link_libraries(dsp_effects_audio_demo PRIVATE dsp_native dsp_tremolo dsp_delay)
+add_test(NAME dsp_effects_audio_demo_test
+    COMMAND dsp_effects_audio_demo "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
+
 
 if(DSP_ENABLE_JUCE_HOST)
     enable_language(C)
@@ -272,6 +278,10 @@ if(DSP_ENABLE_LV2_HOST)
     add_executable(dsp_lv2_host_test test/hosts/lv2/lv2_host_test.cpp)
     target_include_directories(dsp_lv2_host_test SYSTEM PRIVATE "${LV2_INCLUDE_DIR}")
     target_link_libraries(dsp_lv2_host_test PRIVATE "${CMAKE_DL_LIBS}")
+    # Export allocation instrumentation for ELF symbol interposition when
+    # dlopen() loads plugin .so. This is a test-only setting.
+    set_target_properties(dsp_lv2_host_test PROPERTIES ENABLE_EXPORTS ON)
+    target_compile_options(dsp_lv2_host_test PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-mismatched-new-delete>)
     foreach(effect IN ITEMS delay tremolo)
         add_test(NAME dsp_lv2_${effect}_host_test
             COMMAND dsp_lv2_host_test "$<TARGET_FILE:dsp_lv2_${effect}>" "https://micrantha.com/lv2/${effect}" "${effect}")
