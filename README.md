@@ -138,3 +138,6 @@ nix flake check --no-write-lock-file --print-build-logs
 ```
 
 Issue #6 has a merged software-complete Daisy/Hothouse prototype; real hardware validation remains its acceptance blocker. Issue #7 defines the independent bounded guitar-control-plane preset protocol and remains separate from physical transport/hardware validation.
+## Optional LV2 / pi-Stomp host
+
+An opt-in LV2 adapter under `hosts/lv2/` publishes existing delay/tremolo processors as loadable plugins, without introducing LV2 into the core or changing the guitarctl protocol. Build with `DSP_ENABLE_LV2_HOST=ON`; run `nix develop .#lv2` to obtain the host development dependencies. See [LV2 host guide](hosts/lv2/README.md). pi-Stomp hardware validation is #26 and non-blocking Yocto evaluation is #27.

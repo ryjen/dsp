@@ -175,6 +175,38 @@
               '';
         }
         // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+
+          lv2-host = pkgs.stdenv.mkDerivation {
+            pname = "dsp-lv2-host-check";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [ pkgs.cmake pkgs.ninja pkgs.lv2 pkgs.lilv ];
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDSP_ENABLE_LV2_HOST=ON
+              runHook postConfigure
+            '';
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build
+              runHook postBuild
+            '';
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              ctest --test-dir build --output-on-failure
+              export LV2_PATH="$PWD/build/lv2"
+              lv2ls | grep -Fx 'https://micrantha.com/lv2/delay'
+              lv2ls | grep -Fx 'https://micrantha.com/lv2/tremolo'
+              runHook postCheck
+            '';
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out"
+              touch "$out/lv2-host-check-passed"
+              runHook postInstall
+            '';
+          };
           daisy-firmware = pkgs.stdenv.mkDerivation {
             pname = "dsp-daisy-firmware-check";
             version = "0.1.0";
@@ -282,6 +314,10 @@
             ];
           };
 
+
+          lv2 = pkgs.mkShell {
+            packages = [ pkgs.clang pkgs.cmake pkgs.ninja pkgs.lv2 pkgs.lilv ];
+          };
           juce = pkgs.mkShell {
             packages = [
               pkgs.clang
