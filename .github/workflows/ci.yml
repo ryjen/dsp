@@ -27,6 +27,12 @@ jobs:
       - name: Verify committed flake and native checks
         run: nix flake check --no-write-lock-file --print-build-logs
 
+      - name: Build distributable DSP renderer
+        run: |
+          nix build .#dsp-render --no-write-lock-file --print-build-logs
+          test -x result/bin/dsp
+          result/bin/dsp render --help
+
   lv2-aarch64:
     # Native ARM64 LV2 ABI smoke evidence; not a Debian-target deployable binary.
     name: ARM64 LV2 host
