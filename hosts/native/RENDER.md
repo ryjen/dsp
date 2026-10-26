@@ -5,6 +5,28 @@ existing WAV through the **same portable delay and tremolo processors**.
 Guitar Practice System controls it as a separate, optional subprocess; no
 DSP algorithms or new preset schema are copied into Python.
 
+## Installation
+
+On a Nix system, install or run the pinned flake package without a local CMake build:
+
+```sh
+nix profile install github:ryjen/dsp#dsp-render
+# The installed command `dsp` is now on PATH in a new shell.
+guitarctl --workspace /path/to/recordings render guitar.wav \
+  --output processed.wav --effects tremolo,delay
+
+# Or build a self-contained Nix store package without installing:
+nix build github:ryjen/dsp#dsp-render
+./result/bin/dsp render guitar.wav --output processed.wav
+```
+
+The package is a *native offline command only*: it does not include the LV2
+pi-Stomp host, Daisy firmware, JUCE or guitarctl. Install `guitarctl`
+separately. Linux and Darwin flakes are declared, but actual supported
+platforms are determined by passing builds; a declaration alone is not
+compatibility evidence. Building from an exact commit (rather than a moving
+branch) is preferable for reproducible release automation.
+
 ## Build
 
 ```sh
