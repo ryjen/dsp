@@ -15,6 +15,46 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
+      # The portable offline DSP executable, without JUCE/LV2/Daisy.
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          dspRender = pkgs.stdenv.mkDerivation {
+            pname = "micrantha-dsp-render";
+            version = "0.1.0";
+            src = self;
+            nativeBuildInputs = [ pkgs.cmake pkgs.ninja ];
+            configurePhase = ''
+              runHook preConfigure
+              cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+              runHook postConfigure
+            '';
+            buildPhase = ''
+              runHook preBuild
+              cmake --build build --target dsp_render_cli
+              runHook postBuild
+            '';
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              cmake --build build --target dsp_effects_audio_demo
+              ctest --test-dir build -R dsp_render_cli_test --output-on-failure
+              runHook postCheck
+            '';
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 build/dsp "$out/bin/dsp"
+              runHook postInstall
+            '';
+          };
+        in
+        {
+          dsp-render = dspRender;
+          default = dspRender;
+        }
+      );
+
       checks = forAllSystems (
         system:
         let
