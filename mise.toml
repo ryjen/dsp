@@ -1,0 +1,12 @@
+# Nix owns the native and embedded toolchains; mise only names tasks.
+[tasks.test]
+description = "Build and run native CTest suites inside the Nix development shell"
+run = "nix develop --no-write-lock-file --command sh -c 'cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug && cmake --build build && ctest --test-dir build --output-on-failure'"
+
+[tasks.check]
+description = "Run all pinned Nix checks, including optional host and firmware builds"
+run = "nix flake check --no-write-lock-file --print-build-logs"
+
+[tasks.build]
+description = "Build the portable offline renderer"
+run = "nix build .#dsp-render --no-write-lock-file --print-build-logs"

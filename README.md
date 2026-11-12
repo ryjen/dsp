@@ -124,6 +124,12 @@ owned by another worktree.
 
 ## Build and test
 
+The flake owns the C++/Faust/embedded toolchains. The optional `mise.toml`
+only supplies task names: `mise run test` for native CMake/CTest,
+`mise run check` for the complete flake gate, and `mise run build` for
+the portable DSP renderer. No tools are installed or versioned by mise.
+
+
 ```sh
 nix develop
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
